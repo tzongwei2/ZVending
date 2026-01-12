@@ -15,6 +15,7 @@ export type DashboardStats = {
   totalCost: number;
   grossProfit: number;
   netProfit: number;
+  operationalCosts: number;
   totalDrinksSold: number;
   lowStockCount: number;
 };
@@ -138,6 +139,7 @@ export function useDashboardStats(machineId?: string) {
         totalCost,
         grossProfit,
         netProfit,
+        operationalCosts,
         totalDrinksSold,
         lowStockCount: stockData?.length || 0,
       } as DashboardStats;

@@ -31,7 +31,7 @@ import {
   useTopDrinks,
 } from "@/lib/hooks/use-dashboard";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+const COLORS = ["#9B7BB8", "#7BC8E8", "#B8A0D0", "#5BA8C8", "#D0B8E0"];
 
 export default function DashboardPage() {
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
@@ -55,7 +55,6 @@ export default function DashboardPage() {
       year: "2-digit",
     }),
     Revenue: m.revenue,
-    Cost: m.cost,
     Profit: m.gross_profit,
   }));
 
@@ -104,7 +103,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(stats?.netProfit || 0) < 0 ? "text-destructive" : ""}`}>
+            <div className={`text-2xl font-bold ${(stats?.netProfit || 0) < 0 ? "text-red-600" : "text-green-600"}`}>
               {statsLoading ? "..." : formatCurrency(stats?.netProfit || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -158,9 +157,8 @@ export default function DashboardPage() {
                     formatter={(value) => formatCurrency(Number(value))}
                   />
                   <Legend />
-                  <Bar dataKey="Revenue" fill="#0088FE" />
-                  <Bar dataKey="Cost" fill="#FF8042" />
-                  <Bar dataKey="Profit" fill="#00C49F" />
+                  <Bar dataKey="Revenue" fill="#054b17be" />
+                  <Bar dataKey="Profit" fill="#29be35bd" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -220,7 +218,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Gross Profit</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-600">
               {statsLoading ? "..." : formatCurrency(stats?.grossProfit || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -230,14 +228,14 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Product Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">Operating Expenses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : formatCurrency(stats?.totalCost || 0)}
+            <div className="text-2xl font-bold text-red-600">
+              {statsLoading ? "..." : formatCurrency(stats?.operationalCosts || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Cost of goods sold
+              Monthly operational costs
             </p>
           </CardContent>
         </Card>
