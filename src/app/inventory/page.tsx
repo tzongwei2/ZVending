@@ -360,6 +360,7 @@ function DrinkStockTab() {
 }
 
 function MachinePricingTab() {
+  const [selectedMachine, setSelectedMachine] = useState<string>("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<MachineDrinkPriceWithDetails | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<MachineDrinkPriceWithDetails | null>(null);
@@ -371,13 +372,19 @@ function MachinePricingTab() {
   const updatePrice = useUpdateMachineDrinkPrice();
   const deletePrice = useDeleteMachineDrinkPrice();
 
+  const filteredPrices = machinePrices?.filter(
+    (mp) => mp.machine_id === selectedMachine
+  );
+
+  const selectedMachineData = machines?.find((m) => m.id === selectedMachine);
+
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
     try {
       await createPrice.mutateAsync({
-        machine_id: formData.get("machine_id") as string,
+        machine_id: selectedMachine,
         drink_id: formData.get("drink_id") as string,
         selling_price: parseFloat(formData.get("selling_price") as string),
         is_available: true,
@@ -385,7 +392,7 @@ function MachinePricingTab() {
       toast.success("Price set successfully");
       setIsCreateOpen(false);
     } catch {
-      toast.error("Failed. This machine-drink combination may already exist.");
+      toast.error("Failed. This drink may already have a price set for this machine.");
     }
   };
 
@@ -422,137 +429,145 @@ function MachinePricingTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Set Price
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>Set Machine Price</DialogTitle>
-                <DialogDescription>
-                  Set the selling price for a drink at a specific machine.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>Machine</Label>
-                  <Select name="machine_id" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select machine" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {machines?.map((machine) => (
-                        <SelectItem key={machine.id} value={machine.id}>
-                          {machine.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Label className="whitespace-nowrap">Select Machine:</Label>
+          <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Choose a machine to manage pricing" />
+            </SelectTrigger>
+            <SelectContent>
+              {machines?.map((machine) => (
+                <SelectItem key={machine.id} value={machine.id}>
+                  {machine.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {selectedMachine && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Drink Price
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleCreate}>
+                <DialogHeader>
+                  <DialogTitle>Set Drink Price</DialogTitle>
+                  <DialogDescription>
+                    Set the selling price for a drink at {selectedMachineData?.name}.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label>Drink</Label>
+                    <Select name="drink_id" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select drink" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drinks?.map((drink) => (
+                          <SelectItem key={drink.id} value={drink.id}>
+                            {drink.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="selling_price">Selling Price</Label>
+                    <Input
+                      id="selling_price"
+                      name="selling_price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Drink</Label>
-                  <Select name="drink_id" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select drink" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {drinks?.map((drink) => (
-                        <SelectItem key={drink.id} value={drink.id}>
-                          {drink.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="selling_price">Selling Price</Label>
-                  <Input
-                    id="selling_price"
-                    name="selling_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createPrice.isPending}>
-                  {createPrice.isPending ? "Setting..." : "Set Price"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createPrice.isPending}>
+                    {createPrice.isPending ? "Setting..." : "Set Price"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Machine</TableHead>
-              <TableHead>Drink</TableHead>
-              <TableHead>Selling Price</TableHead>
-              <TableHead>Available</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {!selectedMachine ? (
+        <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed">
+          <p className="text-muted-foreground">
+            Select a machine above to view and manage drink prices.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center">Loading...</TableCell>
+                <TableHead>Drink</TableHead>
+                <TableHead>Selling Price</TableHead>
+                <TableHead>Available</TableHead>
+                <TableHead className="w-[70px]"></TableHead>
               </TableRow>
-            ) : machinePrices?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No prices set. Configure selling prices for machines.
-                </TableCell>
-              </TableRow>
-            ) : (
-              machinePrices?.map((mp) => (
-                <TableRow key={mp.id}>
-                  <TableCell className="font-medium">{mp.machine.name}</TableCell>
-                  <TableCell>{mp.drink.name}</TableCell>
-                  <TableCell>${mp.selling_price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge variant={mp.is_available ? "default" : "secondary"}>
-                      {mp.is_available ? "Yes" : "No"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditing(mp)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteConfirm(mp)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">Loading...</TableCell>
+                </TableRow>
+              ) : filteredPrices?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No prices set for {selectedMachineData?.name}. Add drinks to this machine.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                filteredPrices?.map((mp) => (
+                  <TableRow key={mp.id}>
+                    <TableCell className="font-medium">{mp.drink.name}</TableCell>
+                    <TableCell>${mp.selling_price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge variant={mp.is_available ? "default" : "secondary"}>
+                        {mp.is_available ? "Yes" : "No"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditing(mp)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeleteConfirm(mp)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>

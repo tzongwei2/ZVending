@@ -61,7 +61,7 @@ export default function DrinksPage() {
         description: description || null,
         image_url: image_url || null,
       });
-      toast.success("Drink created successfully");
+      toast.success("Drink created successfully", { duration: 1500 });
       setIsCreateOpen(false);
     } catch {
       toast.error("Failed to create drink");
