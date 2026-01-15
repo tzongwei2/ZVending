@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, TrendingUp, Package, ShoppingCart } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingCart, BarChart3 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -29,18 +29,50 @@ import {
   useDashboardStats,
   useMonthlySales,
   useTopDrinks,
+  useMachineProfitComparison,
 } from "@/lib/hooks/use-dashboard";
 
 const COLORS = ["#9B7BB8", "#7BC8E8", "#B8A0D0", "#5BA8C8", "#D0B8E0"];
 
+// Generate month options for the last 12 months
+function getMonthOptions() {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    options.push({ value, label });
+  }
+  return options;
+}
+
 export default function DashboardPage() {
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const machineFilter = selectedMachine === "all" ? undefined : selectedMachine;
+  const monthOptions = getMonthOptions();
   const { data: machines } = useMachines();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(machineFilter);
-  const { data: monthlySales, isLoading: salesLoading } = useMonthlySales(machineFilter);
-  const { data: topDrinks, isLoading: drinksLoading } = useTopDrinks(machineFilter, 5);
+  // Calculate date range for monthly sales (12 months ending at selected month)
+  const getMonthlyDateRange = () => {
+    const [year, monthNum] = selectedMonth.split("-").map(Number);
+    const endDate = new Date(year, monthNum, 0); // Last day of selected month
+    const startDate = new Date(year, monthNum - 12, 1); // 12 months before
+    return {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+    };
+  };
+  const { startDate, endDate } = getMonthlyDateRange();
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(machineFilter, selectedMonth);
+  const { data: monthlySales, isLoading: salesLoading } = useMonthlySales(machineFilter, startDate, endDate);
+  const { data: topDrinks, isLoading: drinksLoading } = useTopDrinks(machineFilter, 5, selectedMonth);
+  const { data: machineProfits, isLoading: profitsLoading } = useMachineProfitComparison(selectedMonth);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -69,19 +101,33 @@ export default function DashboardPage() {
         title="Dashboard"
         description="Overview of your vending machine business"
       >
-        <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by machine" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Machines</SelectItem>
-            {machines?.map((machine) => (
-              <SelectItem key={machine.id} value={machine.id}>
-                {machine.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select month" />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by machine" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Machines</SelectItem>
+              {machines?.map((machine) => (
+                <SelectItem key={machine.id} value={machine.id}>
+                  {machine.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </PageHeader>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -94,7 +140,9 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">
               {statsLoading ? "..." : formatCurrency(stats?.totalRevenue || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">
+              {monthOptions.find((m) => m.value === selectedMonth)?.label}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -120,19 +168,25 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">
               {statsLoading ? "..." : stats?.totalDrinksSold || 0}
             </div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">
+              {monthOptions.find((m) => m.value === selectedMonth)?.label}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Top Machine</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(stats?.lowStockCount || 0) > 0 ? "text-yellow-600" : ""}`}>
-              {statsLoading ? "..." : stats?.lowStockCount || 0}
+            <div className="text-2xl font-bold truncate">
+              {profitsLoading ? "..." : machineProfits?.[0]?.machine_name || "N/A"}
             </div>
-            <p className="text-xs text-muted-foreground">Items below 10 units</p>
+            <p className="text-xs text-muted-foreground">
+              {profitsLoading || !machineProfits?.[0]
+                ? "No data"
+                : formatCurrency(machineProfits[0].profit) + " profit"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -205,6 +259,40 @@ export default function DashboardPage() {
             ) : (
               <div className="flex h-[300px] items-center justify-center text-muted-foreground">
                 No sales data yet. Record some sales to see the chart.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Machine Profit Comparison */}
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Machine Profit Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {profitsLoading ? (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                Loading...
+              </div>
+            ) : machineProfits && machineProfits.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={machineProfits}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="machine_name" />
+                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                  <Legend />
+                  <Bar dataKey="revenue" name="Revenue" fill="#054b17be" />
+                  <Bar dataKey="profit" name="Profit" fill="#29be35bd" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                No machines or sales data yet.
               </div>
             )}
           </CardContent>

@@ -17,7 +17,13 @@ export type DashboardStats = {
   netProfit: number;
   operationalCosts: number;
   totalDrinksSold: number;
-  lowStockCount: number;
+};
+
+export type MachineProfitData = {
+  machine_id: string;
+  machine_name: string;
+  revenue: number;
+  profit: number;
 };
 
 export function useMonthlySales(machineId?: string, startDate?: string, endDate?: string) {
@@ -67,15 +73,25 @@ export function useMonthlySales(machineId?: string, startDate?: string, endDate?
   });
 }
 
-export function useDashboardStats(machineId?: string) {
+export function useDashboardStats(machineId?: string, month?: string) {
   return useQuery({
-    queryKey: ["dashboard_stats", machineId],
+    queryKey: ["dashboard_stats", machineId, month],
     queryFn: async () => {
       const supabase = createClient();
-      // Get current month bounds
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      // Get month bounds - use provided month or current month
+      let startOfMonth: string;
+      let endOfMonth: string;
+
+      if (month) {
+        // month is in YYYY-MM format
+        const [year, monthNum] = month.split("-").map(Number);
+        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+      } else {
+        const now = new Date();
+        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      }
 
       // Get sales for current month
       let salesQuery = supabase
@@ -119,14 +135,6 @@ export function useDashboardStats(machineId?: string) {
       const { data: costsData, error: costsError } = await costsQuery;
       if (costsError) throw costsError;
 
-      // Get low stock items
-      const { data: stockData, error: stockError } = await supabase
-        .from("drink_suppliers")
-        .select("quantity")
-        .lt("quantity", 10);
-
-      if (stockError) throw stockError;
-
       // Calculate totals
       const totalRevenue = salesData?.reduce((sum, s) => sum + s.total_revenue, 0) || 0;
       const totalCost = salesData?.reduce((sum, s) => sum + s.total_cost, 0) || 0;
@@ -141,7 +149,6 @@ export function useDashboardStats(machineId?: string) {
         netProfit,
         operationalCosts,
         totalDrinksSold,
-        lowStockCount: stockData?.length || 0,
       } as DashboardStats;
     },
   });
@@ -154,41 +161,54 @@ export type TopDrink = {
   total_revenue: number;
 };
 
-export function useTopDrinks(machineId?: string, limit: number = 5) {
+export function useTopDrinks(machineId?: string, limit: number = 5, month?: string) {
   return useQuery({
-    queryKey: ["top_drinks", machineId, limit],
+    queryKey: ["top_drinks", machineId, limit, month],
     queryFn: async () => {
       const supabase = createClient();
 
-      // If filtering by machine, first get sales for that machine
-      let saleIds: string[] | null = null;
-      if (machineId) {
-        const { data: sales, error: salesError } = await supabase
-          .from("sales")
-          .select("id")
-          .eq("machine_id", machineId);
+      // Get month bounds
+      let startOfMonth: string;
+      let endOfMonth: string;
 
-        if (salesError) throw salesError;
-        saleIds = sales?.map((s) => s.id) || [];
-
-        if (saleIds.length === 0) return [];
+      if (month) {
+        const [year, monthNum] = month.split("-").map(Number);
+        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+      } else {
+        const now = new Date();
+        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
       }
 
+      // Get sales filtered by machine and/or month
+      let salesQuery = supabase
+        .from("sales")
+        .select("id")
+        .gte("sale_date", startOfMonth)
+        .lte("sale_date", endOfMonth);
+
+      if (machineId) {
+        salesQuery = salesQuery.eq("machine_id", machineId);
+      }
+
+      const { data: sales, error: salesError } = await salesQuery;
+      if (salesError) throw salesError;
+
+      const saleIds = sales?.map((s) => s.id) || [];
+      if (saleIds.length === 0) return [];
+
       // Get sale line items
-      let query = supabase
+      const { data, error } = await supabase
         .from("sale_line_items")
         .select(`
           drink_id,
           quantity,
           line_revenue,
           drink:drinks(name)
-        `);
+        `)
+        .in("sale_id", saleIds);
 
-      if (saleIds) {
-        query = query.in("sale_id", saleIds);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       // Aggregate by drink
@@ -211,6 +231,68 @@ export function useTopDrinks(machineId?: string, limit: number = 5) {
       return Object.values(drinkTotals)
         .sort((a, b) => b.total_quantity - a.total_quantity)
         .slice(0, limit);
+    },
+  });
+}
+
+export function useMachineProfitComparison(month?: string) {
+  return useQuery({
+    queryKey: ["machine_profit_comparison", month],
+    queryFn: async () => {
+      const supabase = createClient();
+
+      // Get month bounds
+      let startOfMonth: string;
+      let endOfMonth: string;
+
+      if (month) {
+        const [year, monthNum] = month.split("-").map(Number);
+        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+      } else {
+        const now = new Date();
+        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      }
+
+      // Get all machines
+      const { data: machines, error: machinesError } = await supabase
+        .from("vending_machines")
+        .select("id, name");
+
+      if (machinesError) throw machinesError;
+
+      // Get sales for the month
+      const { data: sales, error: salesError } = await supabase
+        .from("sales")
+        .select("machine_id, total_revenue, total_profit")
+        .gte("sale_date", startOfMonth)
+        .lte("sale_date", endOfMonth);
+
+      if (salesError) throw salesError;
+
+      // Aggregate by machine
+      const machineData: Record<string, MachineProfitData> = {};
+
+      // Initialize all machines with 0
+      machines?.forEach((machine) => {
+        machineData[machine.id] = {
+          machine_id: machine.id,
+          machine_name: machine.name,
+          revenue: 0,
+          profit: 0,
+        };
+      });
+
+      // Add sales data
+      sales?.forEach((sale) => {
+        if (machineData[sale.machine_id]) {
+          machineData[sale.machine_id].revenue += sale.total_revenue;
+          machineData[sale.machine_id].profit += sale.total_profit;
+        }
+      });
+
+      return Object.values(machineData).sort((a, b) => b.profit - a.profit);
     },
   });
 }
