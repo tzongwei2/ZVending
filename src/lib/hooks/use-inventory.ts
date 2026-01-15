@@ -13,7 +13,7 @@ export type DrinkSupplierWithDetails = {
   quantity: number;
   created_at: string;
   updated_at: string;
-  drink: { id: string; name: string };
+  drink: { id: string; name: string; image_url: string | null };
   supplier: { id: string; name: string };
 };
 
@@ -26,7 +26,7 @@ export function useDrinkSuppliers() {
         .from("drink_suppliers")
         .select(`
           *,
-          drink:drinks(id, name),
+          drink:drinks(id, name, image_url),
           supplier:suppliers(id, name)
         `)
         .order("created_at", { ascending: false });

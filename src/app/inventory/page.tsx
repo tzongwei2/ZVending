@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater } from "lucide-react";
 import { toast } from "sonner";
 import { useDrinks } from "@/lib/hooks/use-drinks";
 import { useSuppliers } from "@/lib/hooks/use-suppliers";
@@ -296,6 +296,7 @@ function DrinkStockTab() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[60px]">Image</TableHead>
               <TableHead>
                 <Button
                   variant="ghost"
@@ -343,17 +344,30 @@ function DrinkStockTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">Loading...</TableCell>
+                <TableCell colSpan={7} className="text-center">Loading...</TableCell>
               </TableRow>
             ) : filteredAndSortedData?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   {searchQuery ? "No results found." : "No inventory records. Add drinks from suppliers."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredAndSortedData?.map((ds) => (
                 <TableRow key={ds.id}>
+                  <TableCell>
+                    {ds.drink.image_url ? (
+                      <img
+                        src={ds.drink.image_url}
+                        alt={ds.drink.name}
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                        <GlassWater className="h-5 w-5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{ds.drink.name}</TableCell>
                   <TableCell>{ds.supplier.name}</TableCell>
                   <TableCell>${ds.cost_price.toFixed(2)}</TableCell>
