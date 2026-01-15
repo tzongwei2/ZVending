@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { useDrinks } from "@/lib/hooks/use-drinks";
 import { useSuppliers } from "@/lib/hooks/use-suppliers";
@@ -79,10 +79,16 @@ export default function InventoryPage() {
   );
 }
 
+type SortField = "drink" | "supplier" | "cost_price" | "quantity";
+type SortDirection = "asc" | "desc";
+
 function DrinkStockTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DrinkSupplierWithDetails | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DrinkSupplierWithDetails | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("drink");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { data: drinkSuppliers, isLoading } = useDrinkSuppliers();
   const { data: drinks } = useDrinks();
@@ -90,6 +96,51 @@ function DrinkStockTab() {
   const createDrinkSupplier = useCreateDrinkSupplier();
   const updateDrinkSupplier = useUpdateDrinkSupplier();
   const deleteDrinkSupplier = useDeleteDrinkSupplier();
+
+  // Filter and sort data
+  const filteredAndSortedData = drinkSuppliers
+    ?.filter((ds) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        ds.drink.name.toLowerCase().includes(query) ||
+        ds.supplier.name.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "drink":
+          comparison = a.drink.name.localeCompare(b.drink.name);
+          break;
+        case "supplier":
+          comparison = a.supplier.name.localeCompare(b.supplier.name);
+          break;
+        case "cost_price":
+          comparison = a.cost_price - b.cost_price;
+          break;
+        case "quantity":
+          comparison = a.quantity - b.quantity;
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1 h-4 w-4" />;
+    return sortDirection === "asc"
+      ? <ArrowUp className="ml-1 h-4 w-4" />
+      : <ArrowDown className="ml-1 h-4 w-4" />;
+  };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -148,7 +199,16 @@ function DrinkStockTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by drink or supplier..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -236,10 +296,46 @@ function DrinkStockTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Drink</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Cost Price</TableHead>
-              <TableHead>Quantity</TableHead>
+              <TableHead>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 -ml-2 font-medium"
+                  onClick={() => handleSort("drink")}
+                >
+                  Drink
+                  <SortIcon field="drink" />
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 -ml-2 font-medium"
+                  onClick={() => handleSort("supplier")}
+                >
+                  Supplier
+                  <SortIcon field="supplier" />
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 -ml-2 font-medium"
+                  onClick={() => handleSort("cost_price")}
+                >
+                  Cost Price
+                  <SortIcon field="cost_price" />
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 -ml-2 font-medium"
+                  onClick={() => handleSort("quantity")}
+                >
+                  Quantity
+                  <SortIcon field="quantity" />
+                </Button>
+              </TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
@@ -249,14 +345,14 @@ function DrinkStockTab() {
               <TableRow>
                 <TableCell colSpan={6} className="text-center">Loading...</TableCell>
               </TableRow>
-            ) : drinkSuppliers?.length === 0 ? (
+            ) : filteredAndSortedData?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  No inventory records. Add drinks from suppliers.
+                  {searchQuery ? "No results found." : "No inventory records. Add drinks from suppliers."}
                 </TableCell>
               </TableRow>
             ) : (
-              drinkSuppliers?.map((ds) => (
+              filteredAndSortedData?.map((ds) => (
                 <TableRow key={ds.id}>
                   <TableCell className="font-medium">{ds.drink.name}</TableCell>
                   <TableCell>{ds.supplier.name}</TableCell>
