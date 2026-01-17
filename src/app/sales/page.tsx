@@ -219,7 +219,7 @@ export default function SalesPage() {
                       <Separator />
                       <div className="grid gap-2">
                         <Label>Cart</Label>
-                        <div className="space-y-2">
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
                           {cart.map((item) => (
                             <div
                               key={item.drink_id}
@@ -255,11 +255,11 @@ export default function SalesPage() {
                               </div>
                             </div>
                           ))}
-                          <div className="flex justify-end pt-2 border-t">
-                            <span className="text-lg font-bold">
-                              Total: ${cartTotal.toFixed(2)}
-                            </span>
-                          </div>
+                        </div>
+                        <div className="flex justify-end pt-2 border-t">
+                          <span className="text-lg font-bold">
+                            Total: ${cartTotal.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </>
