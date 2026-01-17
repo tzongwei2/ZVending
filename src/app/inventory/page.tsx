@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater, ChevronRight, ChevronDown, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDrinks } from "@/lib/hooks/use-drinks";
@@ -80,16 +80,24 @@ export default function InventoryPage() {
   );
 }
 
-type SortField = "drink" | "supplier" | "cost_price" | "quantity";
+type SortField = "drink" | "quantity";
 type SortDirection = "asc" | "desc";
+
+interface GroupedDrink {
+  drink: DrinkSupplierWithDetails["drink"];
+  totalQuantity: number;
+  suppliers: DrinkSupplierWithDetails[];
+}
 
 function DrinkStockTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DrinkSupplierWithDetails | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DrinkSupplierWithDetails | null>(null);
+  const [restocking, setRestocking] = useState<DrinkSupplierWithDetails | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("drink");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [expandedDrinks, setExpandedDrinks] = useState<Set<string>>(new Set());
 
   const { data: drinkSuppliers, isLoading } = useDrinkSuppliers();
   const { data: drinks } = useDrinks();
@@ -98,14 +106,37 @@ function DrinkStockTab() {
   const updateDrinkSupplier = useUpdateDrinkSupplier();
   const deleteDrinkSupplier = useDeleteDrinkSupplier();
 
-  // Filter and sort data
-  const filteredAndSortedData = drinkSuppliers
-    ?.filter((ds) => {
+  // Group drinks and aggregate quantities
+  const groupedDrinks: GroupedDrink[] = (() => {
+    if (!drinkSuppliers) return [];
+
+    const drinkMap = new Map<string, GroupedDrink>();
+
+    drinkSuppliers.forEach((ds) => {
+      const existing = drinkMap.get(ds.drink_id);
+      if (existing) {
+        existing.totalQuantity += ds.quantity;
+        existing.suppliers.push(ds);
+      } else {
+        drinkMap.set(ds.drink_id, {
+          drink: ds.drink,
+          totalQuantity: ds.quantity,
+          suppliers: [ds],
+        });
+      }
+    });
+
+    return Array.from(drinkMap.values());
+  })();
+
+  // Filter and sort grouped data
+  const filteredAndSortedData = groupedDrinks
+    .filter((group) => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       return (
-        ds.drink.name.toLowerCase().includes(query) ||
-        ds.supplier.name.toLowerCase().includes(query)
+        group.drink.name.toLowerCase().includes(query) ||
+        group.suppliers.some((s) => s.supplier.name.toLowerCase().includes(query))
       );
     })
     .sort((a, b) => {
@@ -114,14 +145,8 @@ function DrinkStockTab() {
         case "drink":
           comparison = a.drink.name.localeCompare(b.drink.name);
           break;
-        case "supplier":
-          comparison = a.supplier.name.localeCompare(b.supplier.name);
-          break;
-        case "cost_price":
-          comparison = a.cost_price - b.cost_price;
-          break;
         case "quantity":
-          comparison = a.quantity - b.quantity;
+          comparison = a.totalQuantity - b.totalQuantity;
           break;
       }
       return sortDirection === "asc" ? comparison : -comparison;
@@ -141,6 +166,18 @@ function DrinkStockTab() {
     return sortDirection === "asc"
       ? <ArrowUp className="ml-1 h-4 w-4" />
       : <ArrowDown className="ml-1 h-4 w-4" />;
+  };
+
+  const toggleExpanded = (drinkId: string) => {
+    setExpandedDrinks((prev) => {
+      const next = new Set(prev);
+      if (next.has(drinkId)) {
+        next.delete(drinkId);
+      } else {
+        next.add(drinkId);
+      }
+      return next;
+    });
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -170,7 +207,6 @@ function DrinkStockTab() {
       await updateDrinkSupplier.mutateAsync({
         id: editing.id,
         data: {
-          cost_price: parseFloat(formData.get("cost_price") as string),
           quantity: parseInt(formData.get("quantity") as string),
         },
       });
@@ -189,6 +225,26 @@ function DrinkStockTab() {
       setDeleteConfirm(null);
     } catch {
       toast.error("Failed to delete. This may be linked to sales records.");
+    }
+  };
+
+  const handleRestock = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!restocking) return;
+    const formData = new FormData(e.currentTarget);
+    const addQuantity = parseInt(formData.get("quantity") as string);
+
+    try {
+      await updateDrinkSupplier.mutateAsync({
+        id: restocking.id,
+        data: {
+          quantity: restocking.quantity + addQuantity,
+        },
+      });
+      toast.success(`Added ${addQuantity} units to stock`);
+      setRestocking(null);
+    } catch {
+      toast.error("Failed to restock");
     }
   };
 
@@ -297,6 +353,7 @@ function DrinkStockTab() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]"></TableHead>
               <TableHead className="w-[60px]">Image</TableHead>
               <TableHead>
                 <Button
@@ -312,89 +369,112 @@ function DrinkStockTab() {
                 <Button
                   variant="ghost"
                   className="h-8 px-2 -ml-2 font-medium"
-                  onClick={() => handleSort("supplier")}
-                >
-                  Supplier
-                  <SortIcon field="supplier" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  className="h-8 px-2 -ml-2 font-medium"
-                  onClick={() => handleSort("cost_price")}
-                >
-                  Cost Price
-                  <SortIcon field="cost_price" />
-                </Button>
-              </TableHead>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  className="h-8 px-2 -ml-2 font-medium"
                   onClick={() => handleSort("quantity")}
                 >
-                  Quantity
+                  Total Qty
                   <SortIcon field="quantity" />
                 </Button>
               </TableHead>
+              <TableHead>Suppliers</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="text-center">Loading...</TableCell>
               </TableRow>
-            ) : filteredAndSortedData?.length === 0 ? (
+            ) : filteredAndSortedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   {searchQuery ? "No results found." : "No inventory records. Add drinks from suppliers."}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAndSortedData?.map((ds) => (
-                <TableRow key={ds.id}>
-                  <TableCell>
-                    {ds.drink.image_url ? (
-                      <img
-                        src={ds.drink.image_url}
-                        alt={ds.drink.name}
-                        className="h-10 w-10 rounded object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
-                        <GlassWater className="h-5 w-5 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">{ds.drink.name}</TableCell>
-                  <TableCell>{ds.supplier.name}</TableCell>
-                  <TableCell>${ds.cost_price.toFixed(2)}</TableCell>
-                  <TableCell>{ds.quantity}</TableCell>
-                  <TableCell>{getStockBadge(ds.quantity)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+              filteredAndSortedData.map((group) => {
+                const isExpanded = expandedDrinks.has(group.drink.id);
+                return (
+                  <React.Fragment key={group.drink.id}>
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleExpanded(group.drink.id)}
+                    >
+                      <TableCell className="w-[40px]">
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditing(ds)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteConfirm(ds)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                      </TableCell>
+                      <TableCell>
+                        {group.drink.image_url ? (
+                          <img
+                            src={group.drink.image_url}
+                            alt={group.drink.name}
+                            className="h-10 w-10 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                            <GlassWater className="h-5 w-5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{group.drink.name}</TableCell>
+                      <TableCell className="font-semibold">{group.totalQuantity}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {group.suppliers.length} supplier{group.suppliers.length !== 1 ? "s" : ""}
+                      </TableCell>
+                      <TableCell>{getStockBadge(group.totalQuantity)}</TableCell>
+                    </TableRow>
+                    {isExpanded && group.suppliers.map((ds) => (
+                      <TableRow key={ds.id} className="bg-muted/30">
+                        <TableCell></TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="pl-8 text-muted-foreground">
+                          {ds.supplier.name}
+                        </TableCell>
+                        <TableCell>{ds.quantity}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          @ ${ds.cost_price.toFixed(2)} each
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRestocking(ds); }}>
+                                <PackagePlus className="mr-2 h-4 w-4" />
+                                Restock
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditing(ds); }}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); setDeleteConfirm(ds); }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -412,18 +492,6 @@ function DrinkStockTab() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-cost_price">Cost Price</Label>
-                <Input
-                  id="edit-cost_price"
-                  name="cost_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  defaultValue={editing?.cost_price}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
                 <Label htmlFor="edit-quantity">Quantity</Label>
                 <Input
                   id="edit-quantity"
@@ -434,6 +502,9 @@ function DrinkStockTab() {
                   required
                 />
               </div>
+              <p className="text-sm text-muted-foreground">
+                Cost price: ${editing?.cost_price.toFixed(2)} (not editable)
+              </p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>
@@ -464,6 +535,45 @@ function DrinkStockTab() {
               {deleteDrinkSupplier.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restock Dialog */}
+      <Dialog open={!!restocking} onOpenChange={(open) => !open && setRestocking(null)}>
+        <DialogContent>
+          <form onSubmit={handleRestock}>
+            <DialogHeader>
+              <DialogTitle>Restock from Supplier</DialogTitle>
+              <DialogDescription>
+                Add more {restocking?.drink.name} from {restocking?.supplier.name} (@ ${restocking?.cost_price.toFixed(2)} each)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="restock-quantity">Quantity to Add</Label>
+                <Input
+                  id="restock-quantity"
+                  name="quantity"
+                  type="number"
+                  min="1"
+                  placeholder="Enter quantity"
+                  autoFocus
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  Current stock: {restocking?.quantity} units
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRestocking(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateDrinkSupplier.isPending}>
+                {updateDrinkSupplier.isPending ? "Adding..." : "Add Stock"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
