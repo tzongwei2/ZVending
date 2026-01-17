@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, TrendingUp, ShoppingCart, BarChart3 } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingCart, Package } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -25,6 +25,7 @@ import {
   Cell,
 } from "recharts";
 import { useMachines } from "@/lib/hooks/use-machines";
+import { useDrinkSuppliers } from "@/lib/hooks/use-inventory";
 import {
   useDashboardStats,
   useMonthlySales,
@@ -32,7 +33,7 @@ import {
   useMachineProfitComparison,
 } from "@/lib/hooks/use-dashboard";
 
-const COLORS = ["#9B7BB8", "#7BC8E8", "#B8A0D0", "#5BA8C8", "#D0B8E0"];
+const COLORS = ["#9B7BB8", "#7BC8E8", "#B8A0D0", "#5BA8C8", "#D0B8E0", "#6B9B8B"];
 
 // Generate month options for the last 12 months
 function getMonthOptions() {
@@ -71,8 +72,15 @@ export default function DashboardPage() {
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats(machineFilter, selectedMonth);
   const { data: monthlySales, isLoading: salesLoading } = useMonthlySales(machineFilter, startDate, endDate);
-  const { data: topDrinks, isLoading: drinksLoading } = useTopDrinks(machineFilter, 5, selectedMonth);
+  const { data: topDrinks, isLoading: drinksLoading } = useTopDrinks(machineFilter, 6, selectedMonth);
   const { data: machineProfits, isLoading: profitsLoading } = useMachineProfitComparison(selectedMonth);
+  const { data: drinkSuppliers, isLoading: inventoryLoading } = useDrinkSuppliers();
+
+  // Calculate total inventory value (sum of quantity × cost_price)
+  const inventoryValue = drinkSuppliers?.reduce(
+    (total, ds) => total + ds.quantity * ds.cost_price,
+    0
+  ) || 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -175,17 +183,15 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Machine</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold truncate">
-              {profitsLoading ? "..." : machineProfits?.[0]?.machine_name || "N/A"}
+            <div className="text-2xl font-bold">
+              {inventoryLoading ? "..." : formatCurrency(inventoryValue)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {profitsLoading || !machineProfits?.[0]
-                ? "No data"
-                : formatCurrency(machineProfits[0].profit) + " profit"}
+              Total stock at cost price
             </p>
           </CardContent>
         </Card>
