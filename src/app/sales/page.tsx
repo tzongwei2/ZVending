@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -31,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { Plus, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useMachines } from "@/lib/hooks/use-machines";
 import {
@@ -95,10 +94,6 @@ export default function SalesPage() {
     }
   };
 
-  const handleRemoveFromCart = (drinkId: string) => {
-    setCart(cart.filter((c) => c.drink_id !== drinkId));
-  };
-
   const cartTotal = cart.reduce(
     (sum, item) => sum + item.selling_price * item.quantity,
     0
@@ -148,7 +143,7 @@ export default function SalesPage() {
               Record Sale
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Record Sale</DialogTitle>
               <DialogDescription>
@@ -159,7 +154,7 @@ export default function SalesPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Machine</Label>
-                <Select value={selectedMachine} onValueChange={setSelectedMachine}>
+                <Select value={selectedMachine} onValueChange={(value) => { setSelectedMachine(value); setCart([]); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select machine" />
                   </SelectTrigger>
@@ -179,91 +174,113 @@ export default function SalesPage() {
                 <>
                   <Separator />
                   <div className="grid gap-2">
-                    <Label>Available Drinks</Label>
-                    <div className="grid gap-2 max-h-48 overflow-y-auto">
+                    <div className="flex items-center justify-between">
+                      <Label>Select Drinks</Label>
+                      {cart.length > 0 && (
+                        <span className="text-lg font-bold">
+                          {cart.reduce((sum, item) => sum + item.quantity, 0)} drinks · ${cartTotal.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto p-1">
                       {availableDrinks?.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground col-span-4">
                           No drinks configured for this machine.
                         </p>
                       ) : (
-                        availableDrinks?.map((drink) => (
-                          <div
-                            key={drink.drink_id}
-                            className="flex items-center justify-between p-2 border rounded"
-                          >
-                            <div>
-                              <span className="font-medium">{drink.drink_name}</span>
-                              <span className="text-muted-foreground ml-2">
-                                ${drink.selling_price.toFixed(2)}
-                              </span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                (Stock: {drink.total_stock})
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAddToCart(drink.drink_id)}
-                              disabled={drink.total_stock === 0}
+                        availableDrinks?.map((drink) => {
+                          const inCart = cart.find((c) => c.drink_id === drink.drink_id);
+                          const quantity = inCart?.quantity || 0;
+                          return (
+                            <div
+                              key={drink.drink_id}
+                              className={`relative flex flex-col items-center p-2 border rounded-lg transition-colors ${
+                                quantity > 0 ? "ring-2 ring-purple-400 bg-purple-100 dark:bg-purple-900/30" : ""
+                              } ${drink.total_stock === 0 ? "opacity-50" : ""}`}
                             >
-                              Add
-                            </Button>
-                          </div>
-                        ))
+                              <div
+                                className="w-full cursor-pointer"
+                                onClick={() => drink.total_stock > 0 && handleAddToCart(drink.drink_id)}
+                              >
+                                <div className="w-16 h-16 mx-auto mb-1 rounded overflow-hidden bg-muted flex items-center justify-center">
+                                  {drink.image_url ? (
+                                    <img
+                                      src={drink.image_url}
+                                      alt={drink.drink_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-2xl">🥤</span>
+                                  )}
+                                </div>
+                                <p className="text-xs font-medium text-center line-clamp-2 leading-tight">
+                                  {drink.drink_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground text-center">
+                                  ${drink.selling_price.toFixed(2)}
+                                </p>
+                              </div>
+                              {quantity > 0 ? (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-6 w-6"
+                                    onClick={() => handleUpdateQuantity(drink.drink_id, quantity - 1)}
+                                  >
+                                    <span className="text-sm">-</span>
+                                  </Button>
+                                  <input
+                                    key={`${drink.drink_id}-${quantity}`}
+                                    type="number"
+                                    min="1"
+                                    defaultValue={quantity}
+                                    onBlur={(e) => {
+                                      const val = parseInt(e.target.value);
+                                      if (isNaN(val) || val <= 0) {
+                                        handleUpdateQuantity(drink.drink_id, 0);
+                                      } else if (val !== quantity) {
+                                        handleUpdateQuantity(drink.drink_id, val);
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
+                                    className="w-10 h-6 text-center text-sm font-medium border rounded bg-background"
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-6 w-6"
+                                    onClick={() => handleAddToCart(drink.drink_id)}
+                                  >
+                                    <span className="text-sm">+</span>
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="h-7 mt-1 flex items-center">
+                                  {drink.total_stock <= 5 && drink.total_stock > 0 && (
+                                    <span className="text-[10px] text-orange-500">
+                                      Low: {drink.total_stock}
+                                    </span>
+                                  )}
+                                  {drink.total_stock === 0 && (
+                                    <span className="text-[10px] text-destructive">
+                                      Out of stock
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
-
-                  {cart.length > 0 && (
-                    <>
-                      <Separator />
-                      <div className="grid gap-2">
-                        <Label>Cart</Label>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {cart.map((item) => (
-                            <div
-                              key={item.drink_id}
-                              className="flex items-center justify-between p-2 bg-muted rounded"
-                            >
-                              <span>{item.drink_name}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">
-                                  ${item.selling_price.toFixed(2)} x
-                                </span>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    handleUpdateQuantity(
-                                      item.drink_id,
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                  className="w-16"
-                                />
-                                <span className="font-medium w-20 text-right">
-                                  ${(item.selling_price * item.quantity).toFixed(2)}
-                                </span>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handleRemoveFromCart(item.drink_id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-end pt-2 border-t">
-                          <span className="text-lg font-bold">
-                            Total: ${cartTotal.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </>
               )}
             </div>

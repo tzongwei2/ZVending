@@ -103,6 +103,7 @@ export function useRecordSale() {
 export type AvailableDrink = {
   drink_id: string;
   drink_name: string;
+  image_url: string | null;
   selling_price: number;
   total_stock: number;
 };
@@ -118,7 +119,7 @@ export function useAvailableDrinks(machineId: string) {
         .select(`
           drink_id,
           selling_price,
-          drink:drinks(name)
+          drink:drinks(name, image_url)
         `)
         .eq("machine_id", machineId)
         .eq("is_available", true);
@@ -144,7 +145,8 @@ export function useAvailableDrinks(machineId: string) {
 
       return machineDrinks?.map((d) => ({
         drink_id: d.drink_id,
-        drink_name: (d.drink as { name: string }).name,
+        drink_name: (d.drink as { name: string; image_url: string | null }).name,
+        image_url: (d.drink as { name: string; image_url: string | null }).image_url,
         selling_price: d.selling_price,
         total_stock: stockByDrink[d.drink_id] || 0,
       })) as AvailableDrink[];
