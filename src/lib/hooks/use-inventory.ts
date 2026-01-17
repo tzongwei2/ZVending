@@ -115,7 +115,7 @@ export type MachineDrinkPriceWithDetails = {
   created_at: string;
   updated_at: string;
   machine: { id: string; name: string };
-  drink: { id: string; name: string };
+  drink: { id: string; name: string; image_url: string | null };
 };
 
 export function useMachineDrinkPrices() {
@@ -128,7 +128,7 @@ export function useMachineDrinkPrices() {
         .select(`
           *,
           machine:vending_machines(id, name),
-          drink:drinks(id, name)
+          drink:drinks(id, name, image_url)
         `)
         .order("created_at", { ascending: false });
 

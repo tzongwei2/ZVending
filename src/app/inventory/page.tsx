@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useDrinks } from "@/lib/hooks/use-drinks";
 import { useSuppliers } from "@/lib/hooks/use-suppliers";
 import { useMachines } from "@/lib/hooks/use-machines";
@@ -621,61 +622,169 @@ function MachinePricingTab() {
           </p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Drink</TableHead>
-                <TableHead>Selling Price</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead className="w-[70px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center">Loading...</TableCell>
-                </TableRow>
-              ) : filteredPrices?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No prices set for {selectedMachineData?.name}. Add drinks to this machine.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredPrices?.map((mp) => (
-                  <TableRow key={mp.id}>
-                    <TableCell className="font-medium">{mp.drink.name}</TableCell>
-                    <TableCell>${mp.selling_price.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge variant={mp.is_available ? "default" : "secondary"}>
-                        {mp.is_available ? "Yes" : "No"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditing(mp)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDeleteConfirm(mp)} className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        /* Vending Machine Planogram - styled like reference image */
+        <div className="flex justify-center">
+          <div className="relative w-[420px]">
+            {/* Machine Frame */}
+            <div className="bg-white rounded-t-3xl rounded-b-xl shadow-2xl overflow-hidden border-2 border-slate-300">
+              {/* Top Frame */}
+              <div className="bg-slate-200 h-4 rounded-t-3xl" />
+
+              {/* Glass Display Section */}
+              <div className="mx-3 mt-2 mb-3">
+                {/* Glass Panel with Reflection */}
+                <div className="relative bg-gradient-to-br from-sky-200 via-sky-100 to-sky-50 rounded-lg border-4 border-slate-400 overflow-hidden">
+                  {/* Glass Reflection Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute top-4 left-4 w-32 h-1 bg-white/50 rounded-full transform -rotate-45 pointer-events-none" />
+                  <div className="absolute top-8 left-8 w-20 h-0.5 bg-white/30 rounded-full transform -rotate-45 pointer-events-none" />
+
+                  {isLoading ? (
+                    <div className="flex h-[320px] items-center justify-center text-muted-foreground">
+                      Loading...
+                    </div>
+                  ) : (
+                    <div className="p-3 space-y-3 min-h-[320px]">
+                      {/* Organize drinks into rows (shelves) */}
+                      {(() => {
+                        const numRows = 3;
+                        const allItems = [...(filteredPrices || [])];
+                        // Calculate items per row to fit all drinks in exactly 3 rows
+                        const itemsPerRow = Math.max(5, Math.ceil(allItems.length / numRows));
+                        const rows: (MachineDrinkPriceWithDetails | null)[][] = [];
+
+                        // Create exactly 3 rows of drinks
+                        for (let i = 0; i < numRows; i++) {
+                          const startIdx = i * itemsPerRow;
+                          rows.push(allItems.slice(startIdx, startIdx + itemsPerRow));
+                        }
+
+                        return rows.map((row, rowIndex) => (
+                          <div key={rowIndex} className="relative">
+                            {/* Shelf */}
+                            <div
+                              className="grid gap-1.5"
+                              style={{ gridTemplateColumns: `repeat(${itemsPerRow}, minmax(0, 1fr))` }}
+                            >
+                              {row.map((mp, colIndex) => mp && (
+                                <div
+                                  key={mp.id}
+                                  className={cn(
+                                    "group relative cursor-pointer transition-all hover:scale-105 hover:z-10",
+                                    !mp.is_available && "opacity-40"
+                                  )}
+                                  onClick={() => setEditing(mp)}
+                                >
+                                  {/* Drink Container */}
+                                  <div className="flex flex-col items-center w-full">
+                                    {/* Drink Image */}
+                                    <div className="w-full h-20 flex items-end justify-center">
+                                      {mp.drink.image_url ? (
+                                        <img
+                                          src={mp.drink.image_url}
+                                          alt={mp.drink.name}
+                                          className="max-h-full max-w-full object-contain drop-shadow-md"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-18 bg-gradient-to-b from-blue-400 to-blue-600 rounded-sm shadow-md" />
+                                      )}
+                                    </div>
+                                    {/* Price Tag */}
+                                    <div className="bg-white/90 rounded px-1.5 py-0.5 mt-1 shadow-sm">
+                                      <p className="text-xs font-bold text-primary">
+                                        ${mp.selling_price.toFixed(2)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {/* Unavailable Badge */}
+                                  {!mp.is_available && (
+                                    <div className="absolute top-0 left-0">
+                                      <Badge variant="destructive" className="text-[8px] px-1 py-0">
+                                        Off
+                                      </Badge>
+                                    </div>
+                                  )}
+                                  {/* Hover Actions */}
+                                  <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow">
+                                          <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditing(mp); }}>
+                                          <Pencil className="mr-2 h-4 w-4" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(mp); }}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Remove
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                              ))}
+                              {/* Empty slots to fill the row */}
+                              {Array.from({ length: Math.max(0, itemsPerRow - row.length) }).map((_, i) => (
+                                <div key={`empty-${rowIndex}-${i}`} className="h-[94px]" />
+                              ))}
+                            </div>
+                            {/* Shelf Bar */}
+                            <div className="h-2 bg-gradient-to-b from-slate-400 to-slate-500 rounded-b shadow-inner mt-1" />
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Lower Body - White Section */}
+              <div className="bg-white px-3 pb-3">
+                <div className="flex gap-3">
+                  {/* Left Panel - Decorative Display */}
+                  <div className="flex-1 bg-gradient-to-br from-amber-700 to-amber-900 rounded-lg h-24 flex items-center justify-center overflow-hidden shadow-inner border border-amber-600">
+                    <div className="text-center">
+                      <GlassWater className="h-8 w-8 text-amber-300 mx-auto" />
+                      <p className="text-amber-200 text-xs font-semibold mt-1">{selectedMachineData?.name}</p>
+                    </div>
+                  </div>
+
+                  {/* Right Panel - Controls */}
+                  <div className="w-28 space-y-3">
+                    {/* Coin Slot */}
+                    <div className="bg-slate-700 rounded h-6 flex items-center justify-center">
+                      <div className="w-10 h-1.5 bg-slate-500 rounded-full" />
+                    </div>
+                    {/* Bill Slot */}
+                    <div className="bg-slate-700 rounded h-4 flex items-center justify-center">
+                      <div className="w-14 h-0.5 bg-slate-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dispensing Slot */}
+                <div className="mt-3 bg-slate-800 rounded-lg h-10 flex items-center justify-center shadow-inner border-2 border-slate-700">
+                  <div className="bg-slate-900 w-[90%] h-6 rounded flex items-center justify-center">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Machine Legs */}
+            <div className="flex justify-between px-6">
+              <div className="w-8 h-6 bg-slate-400 rounded-b-lg shadow-md" />
+              <div className="w-8 h-6 bg-slate-400 rounded-b-lg shadow-md" />
+            </div>
+
+            {/* Shadow Effect */}
+            <div className="absolute -bottom-4 left-4 right-4 h-4 bg-black/20 rounded-full blur-md -z-10" />
+          </div>
         </div>
       )}
 
