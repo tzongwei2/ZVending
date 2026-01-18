@@ -5,10 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
-  CardAction,
   CardDescription,
 } from "@/components/ui/card";
 import {
@@ -22,13 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Trash2, GlassWater } from "lucide-react";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { Plus, GlassWater } from "lucide-react";
 import { toast } from "sonner";
 import {
   useDrinks,
@@ -64,7 +58,7 @@ export default function DrinksPage() {
       toast.success("Drink created successfully", { duration: 1500 });
       setIsCreateOpen(false);
     } catch {
-      toast.error("Failed to create drink");
+      toast.error("Failed to create drink", { duration: 1500 });
     }
   };
 
@@ -86,22 +80,22 @@ export default function DrinksPage() {
           image_url: image_url || null,
         },
       });
-      toast.success("Drink updated successfully");
+      toast.success("Drink updated successfully", { duration: 1500 });
       setEditingDrink(null);
     } catch {
-      toast.error("Failed to update drink");
+      toast.error("Failed to update drink", { duration: 1500 });
     }
   };
-
+  
   const handleDelete = async () => {
     if (!deleteConfirm) return;
 
     try {
       await deleteDrink.mutateAsync(deleteConfirm.id);
-      toast.success("Drink deleted successfully");
+      toast.success("Drink deleted successfully", { duration: 1500 });
       setDeleteConfirm(null);
     } catch {
-      toast.error("Failed to delete drink. It may have inventory or sales records.");
+      toast.error("Failed to delete drink. It may have inventory or sales records.", { duration: 1500 });
     }
   };
 
@@ -196,26 +190,14 @@ export default function DrinksPage() {
                   </div>
                 )}
                 <div className="absolute top-2 right-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="icon" className="h-8 w-8 shadow-sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingDrink(drink)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setDeleteConfirm(drink)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ActionsDropdown
+                    item={drink}
+                    onEdit={setEditingDrink}
+                    onDelete={setDeleteConfirm}
+                    variant="secondary"
+                    size="sm"
+                    className="shadow-sm"
+                  />
                 </div>
               </div>
               <CardHeader className="p-3">
@@ -280,30 +262,14 @@ export default function DrinksPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Drink</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteDrink.isPending}
-            >
-              {deleteDrink.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Drink"
+        description={<>Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.</>}
+        onConfirm={handleDelete}
+        isPending={deleteDrink.isPending}
+      />
     </div>
   );
 }

@@ -29,14 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   useMachines,
@@ -229,26 +225,11 @@ export default function MachinesPage() {
                     {new Date(machine.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingMachine(machine)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteConfirm(machine)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ActionsDropdown
+                      item={machine}
+                      onEdit={setEditingMachine}
+                      onDelete={setDeleteConfirm}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -311,30 +292,14 @@ export default function MachinesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Machine</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteMachine.isPending}
-            >
-              {deleteMachine.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Machine"
+        description={<>Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.</>}
+        onConfirm={handleDelete}
+        isPending={deleteMachine.isPending}
+      />
     </div>
   );
 }

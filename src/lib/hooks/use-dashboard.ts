@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
 // Starting cash balance as of Jan 2026, migrated from excel
-const STARTING_CASH = 200;
-
+const STARTING_CASH = 429.62; // plus feiyang 144.1 which is not recorded cuz did not collecct feiyang sales data
+ 
 export type MonthlySummary = {
   month: string;
   revenue: number;

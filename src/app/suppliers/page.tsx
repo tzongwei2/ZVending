@@ -22,13 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   useSuppliers,
@@ -188,26 +184,11 @@ export default function SuppliersPage() {
                     {new Date(supplier.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingSupplier(supplier)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteConfirm(supplier)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ActionsDropdown
+                      item={supplier}
+                      onEdit={setEditingSupplier}
+                      onDelete={setDeleteConfirm}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -257,30 +238,14 @@ export default function SuppliersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Supplier</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteSupplier.isPending}
-            >
-              {deleteSupplier.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Supplier"
+        description={<>Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;? This action cannot be undone.</>}
+        onConfirm={handleDelete}
+        isPending={deleteSupplier.isPending}
+      />
     </div>
   );
 }

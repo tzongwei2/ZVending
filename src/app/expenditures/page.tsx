@@ -30,14 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMachines } from "@/lib/hooks/use-machines";
 import { useSuppliers } from "@/lib/hooks/use-suppliers";
@@ -305,26 +301,11 @@ export default function ExpendituresPage() {
                     ${expenditure.amount.toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditing(expenditure)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteConfirm(expenditure)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ActionsDropdown
+                      item={expenditure}
+                      onEdit={setEditing}
+                      onDelete={setDeleteConfirm}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -441,30 +422,19 @@ export default function ExpendituresPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Expenditure</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this ${deleteConfirm?.amount.toFixed(2)}{" "}
-              {deleteConfirm && categoryLabels[deleteConfirm.category].toLowerCase()} expense?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteExpenditure.isPending}
-            >
-              {deleteExpenditure.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Expenditure"
+        description={
+          <>
+            Are you sure you want to delete this ${deleteConfirm?.amount.toFixed(2)}{" "}
+            {deleteConfirm && categoryLabels[deleteConfirm.category].toLowerCase()} expense?
+          </>
+        }
+        onConfirm={handleDelete}
+        isPending={deleteExpenditure.isPending}
+      />
     </div>
   );
 }

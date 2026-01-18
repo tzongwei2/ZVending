@@ -398,4 +398,3 @@ export type Sale = Tables<"sales">;
 export type SaleLineItem = Tables<"sale_line_items">;
 export type OperationalCost = Tables<"operational_costs">;
 export type Expenditure = Tables<"expenditures">;
-export type Setting = Tables<"settings">;
