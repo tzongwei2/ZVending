@@ -305,6 +305,58 @@ export type Database = {
           }
         ];
       };
+      expenditures: {
+        Row: {
+          id: string;
+          category: "restocking" | "equipment" | "transport" | "misc";
+          description: string;
+          amount: number;
+          purchase_date: string;
+          machine_id: string | null;
+          supplier_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          category: "restocking" | "equipment" | "transport" | "misc";
+          description: string;
+          amount: number;
+          purchase_date?: string;
+          machine_id?: string | null;
+          supplier_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          category?: "restocking" | "equipment" | "transport" | "misc";
+          description?: string;
+          amount?: number;
+          purchase_date?: string;
+          machine_id?: string | null;
+          supplier_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expenditures_machine_id_fkey";
+            columns: ["machine_id"];
+            referencedRelation: "vending_machines";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenditures_supplier_id_fkey";
+            columns: ["supplier_id"];
+            referencedRelation: "suppliers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -321,6 +373,7 @@ export type Database = {
     Enums: {
       machine_status: "active" | "inactive" | "maintenance";
       cost_type: "rental" | "maintenance" | "utilities" | "other";
+      expenditure_category: "restocking" | "equipment" | "transport" | "misc";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -344,3 +397,5 @@ export type MachineDrinkPrice = Tables<"machine_drink_prices">;
 export type Sale = Tables<"sales">;
 export type SaleLineItem = Tables<"sale_line_items">;
 export type OperationalCost = Tables<"operational_costs">;
+export type Expenditure = Tables<"expenditures">;
+export type Setting = Tables<"settings">;

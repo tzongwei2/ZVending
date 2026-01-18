@@ -3,6 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
+// Starting cash balance as of Jan 2026, migrated from excel
+const STARTING_CASH = 200;
+
 export type MonthlySummary = {
   month: string;
   revenue: number;
@@ -293,6 +296,157 @@ export function useMachineProfitComparison(month?: string) {
       });
 
       return Object.values(machineData).sort((a, b) => b.profit - a.profit);
+    },
+  });
+}
+
+export type CashflowData = {
+  month: string;
+  income: number;
+  expenses: number;  // Stored as negative for chart display
+  monthlyNet: number;
+  cumulativeCash: number;
+};
+
+export function useCashflow() {
+  return useQuery({
+    queryKey: ["cashflow"],
+    queryFn: async () => {
+      const supabase = createClient();
+
+      // Get all sales (revenue = income)
+      const { data: sales, error: salesError } = await supabase
+        .from("sales")
+        .select("sale_date, total_revenue");
+
+      if (salesError) throw salesError;
+
+      // Get all expenditures (handle if table doesn't exist)
+      let expenditures: { purchase_date: string; amount: number }[] = [];
+      try {
+        const { data: expData, error: expError } = await supabase
+          .from("expenditures")
+          .select("purchase_date, amount");
+        if (!expError && expData) {
+          expenditures = expData;
+        }
+      } catch {
+        // Expenditures table might not exist yet
+      }
+
+      // Get all operational costs
+      const { data: operationalCosts, error: opsError } = await supabase
+        .from("operational_costs")
+        .select("period_start, amount");
+
+      if (opsError) throw opsError;
+
+      // Group by month
+      const monthlyData: Record<string, { income: number; expenses: number }> = {};
+
+      // Add income (revenue)
+      sales?.forEach((sale) => {
+        const monthKey = sale.sale_date.substring(0, 7);
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { income: 0, expenses: 0 };
+        }
+        monthlyData[monthKey].income += sale.total_revenue;
+      });
+
+      // Add expenditures
+      expenditures?.forEach((exp) => {
+        const monthKey = exp.purchase_date.substring(0, 7);
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { income: 0, expenses: 0 };
+        }
+        monthlyData[monthKey].expenses += exp.amount;
+      });
+
+      // Add operational costs
+      operationalCosts?.forEach((cost) => {
+        const monthKey = cost.period_start.substring(0, 7);
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { income: 0, expenses: 0 };
+        }
+        monthlyData[monthKey].expenses += cost.amount;
+      });
+
+      // Sort months and calculate cumulative
+      const sortedMonths = Object.keys(monthlyData).sort();
+      let cumulativeCash = STARTING_CASH;
+
+      const result: CashflowData[] = sortedMonths.map((month) => {
+        const data = monthlyData[month];
+        const monthlyNet = data.income - data.expenses;
+        cumulativeCash += monthlyNet;
+
+        return {
+          month,
+          income: data.income,
+          expenses: -data.expenses,  // Negative for below-zero display
+          monthlyNet,
+          cumulativeCash,
+        };
+      });
+
+      return result;
+    },
+  });
+}
+
+export type CashBalanceData = {
+  startingCash: number;
+  totalRevenue: number;
+  totalExpenditures: number;
+  currentBalance: number;
+};
+
+export function useCashBalance() {
+  return useQuery({
+    queryKey: ["cash_balance"],
+    queryFn: async () => {
+      const supabase = createClient();
+
+      // Get total revenue from all sales
+      const { data: sales, error: salesError } = await supabase
+        .from("sales")
+        .select("total_revenue");
+
+      if (salesError) throw salesError;
+
+      const totalRevenue = sales?.reduce((sum, s) => sum + s.total_revenue, 0) || 0;
+
+      // Get total expenditures (handle if table doesn't exist)
+      let totalExpenditures = 0;
+      try {
+        const { data: expenditures, error: expError } = await supabase
+          .from("expenditures")
+          .select("amount");
+        if (!expError && expenditures) {
+          totalExpenditures = expenditures.reduce((sum, e) => sum + e.amount, 0);
+        }
+      } catch {
+        // Expenditures table might not exist yet
+      }
+
+      // Get total operational costs
+      const { data: operationalCosts, error: opsError } = await supabase
+        .from("operational_costs")
+        .select("amount");
+
+      if (!opsError && operationalCosts) {
+        totalExpenditures += operationalCosts.reduce((sum, c) => sum + c.amount, 0);
+      }
+
+      // Calculate current balance
+      const currentBalance = STARTING_CASH + totalRevenue - totalExpenditures;
+
+      return {
+        startingCash: STARTING_CASH,
+        totalRevenue,
+        totalExpenditures,
+        currentBalance,
+      } as CashBalanceData;
     },
   });
 }

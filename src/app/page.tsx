@@ -23,6 +23,9 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
+  Line,
+  ReferenceLine,
 } from "recharts";
 import { useMachines } from "@/lib/hooks/use-machines";
 import { useDrinkSuppliers } from "@/lib/hooks/use-inventory";
@@ -31,6 +34,7 @@ import {
   useMonthlySales,
   useTopDrinks,
   useMachineProfitComparison,
+  useCashflow,
 } from "@/lib/hooks/use-dashboard";
 
 const COLORS = ["#9B7BB8", "#7BC8E8", "#B8A0D0", "#5BA8C8", "#D0B8E0", "#6B9B8B"];
@@ -54,7 +58,7 @@ export default function DashboardPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-
+  
   const machineFilter = selectedMachine === "all" ? undefined : selectedMachine;
   const monthOptions = getMonthOptions();
   const { data: machines } = useMachines();
@@ -75,6 +79,7 @@ export default function DashboardPage() {
   const { data: topDrinks, isLoading: drinksLoading } = useTopDrinks(machineFilter, 6, selectedMonth);
   const { data: machineProfits, isLoading: profitsLoading } = useMachineProfitComparison(selectedMonth);
   const { data: drinkSuppliers, isLoading: inventoryLoading } = useDrinkSuppliers();
+  const { data: cashflow, isLoading: cashflowLoading } = useCashflow();
 
   // Calculate total inventory value (sum of quantity × cost_price)
   const inventoryValue = drinkSuppliers?.reduce(
@@ -103,6 +108,18 @@ export default function DashboardPage() {
     value: d.total_quantity,
   }));
 
+  const cashflowChartData = cashflow?.map((cf) => ({
+    month: new Date(cf.month + "-01").toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    }),
+    Income: cf.income,
+    Expenses: cf.expenses,
+    "Net Cashflow": cf.monthlyNet,
+    "Total Cash": cf.cumulativeCash,
+  }));
+
+  
   return (
     <div>
       <PageHeader
@@ -271,8 +288,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Machine Profit Comparison */}
-      <div className="mt-6">
+      {/* Machine Profit Comparison & Cashflow */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Machine Profit Comparison</CardTitle>
@@ -299,6 +316,52 @@ export default function DashboardPage() {
             ) : (
               <div className="flex h-[300px] items-center justify-center text-muted-foreground">
                 No machines or sales data yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Cashflow</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {cashflowLoading ? (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                Loading...
+              </div>
+            ) : cashflowChartData && cashflowChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={cashflowChartData} barGap={-40}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                  <Legend />
+                  <ReferenceLine y={0} stroke="#666" />
+                  <Bar dataKey="Income" fill="#2dd4bf" barSize={40} />
+                  <Bar dataKey="Expenses" fill="#f472b6" barSize={40} />
+                  <Line
+                    type="monotone"
+                    dataKey="Net Cashflow"
+                    stroke="#000"
+                    strokeWidth={2}
+                    dot={{ fill: "#000", r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="Total Cash"
+                    stroke="#666"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={{ fill: "#666", r: 4, strokeWidth: 0 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                No cashflow data yet. Record sales and expenditures.
               </div>
             )}
           </CardContent>
@@ -351,6 +414,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+
+      </div>
   );
 }

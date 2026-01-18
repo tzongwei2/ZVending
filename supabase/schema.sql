@@ -10,6 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TYPE machine_status AS ENUM ('active', 'inactive', 'maintenance');
 CREATE TYPE cost_type AS ENUM ('rental', 'maintenance', 'utilities', 'other');
+CREATE TYPE expenditure_category AS ENUM ('restocking', 'equipment', 'transport', 'misc');
 
 -- ============================================
 -- CORE TABLES
@@ -117,6 +118,23 @@ CREATE TABLE operational_costs (
 );
 
 -- ============================================
+-- EXPENDITURES TABLE (One-time purchases)
+-- ============================================
+
+CREATE TABLE expenditures (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category expenditure_category NOT NULL,
+    description TEXT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 0),
+    purchase_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    machine_id UUID REFERENCES vending_machines(id) ON DELETE SET NULL,
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================
 
@@ -131,6 +149,9 @@ CREATE INDEX idx_sale_line_items_sale_id ON sale_line_items(sale_id);
 CREATE INDEX idx_sale_line_items_drink_id ON sale_line_items(drink_id);
 CREATE INDEX idx_operational_costs_machine_id ON operational_costs(machine_id);
 CREATE INDEX idx_operational_costs_period ON operational_costs(period_start, period_end);
+CREATE INDEX idx_expenditures_category ON expenditures(category);
+CREATE INDEX idx_expenditures_purchase_date ON expenditures(purchase_date);
+CREATE INDEX idx_expenditures_machine_id ON expenditures(machine_id);
 
 -- ============================================
 -- UPDATED_AT TRIGGER
@@ -154,6 +175,10 @@ CREATE TRIGGER update_drink_suppliers_updated_at
 
 CREATE TRIGGER update_machine_drink_prices_updated_at
     BEFORE UPDATE ON machine_drink_prices
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_expenditures_updated_at
+    BEFORE UPDATE ON expenditures
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================

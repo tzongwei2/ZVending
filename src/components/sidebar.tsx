@@ -12,6 +12,7 @@ import {
   PackageSearch,
   ShoppingCart,
   Receipt,
+  Wallet,
 } from "lucide-react";
 
 const navigation = [
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Inventory", href: "/inventory", icon: PackageSearch },
   { name: "Sales", href: "/sales", icon: ShoppingCart },
   { name: "Costs", href: "/costs", icon: Receipt },
+  { name: "Expenditures", href: "/expenditures", icon: Wallet },
 ];
 
 export function Sidebar() {
