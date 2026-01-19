@@ -1,39 +1,26 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import type { VendingMachine, InsertTables, UpdateTables } from "@/types/database";
+import {
+  createFetchAllQuery,
+  createFetchOneByIdQuery,
+  createInsertMutation,
+  createUpdateMutation,
+  createDeleteMutation,
+} from "./crud-hooks-factory";
 
 export function useMachines() {
   return useQuery({
     queryKey: ["machines"],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("vending_machines")
-        .select("*")
-        .order("name");
-
-      if (error) throw error;
-      return data as VendingMachine[];
-    },
+    queryFn: createFetchAllQuery<VendingMachine>("vending_machines", { orderBy: "name" }),
   });
 }
 
 export function useMachine(id: string) {
   return useQuery({
     queryKey: ["machines", id],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("vending_machines")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data as VendingMachine;
-    },
+    queryFn: createFetchOneByIdQuery<VendingMachine>("vending_machines", id),
     enabled: !!id,
   });
 }
@@ -42,17 +29,7 @@ export function useCreateMachine() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (machine: InsertTables<"vending_machines">) => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("vending_machines")
-        .insert(machine)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: createInsertMutation<InsertTables<"vending_machines">>("vending_machines"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machines"] });
     },
@@ -63,24 +40,7 @@ export function useUpdateMachine() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateTables<"vending_machines">;
-    }) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("vending_machines")
-        .update(data)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createUpdateMutation<UpdateTables<"vending_machines">>("vending_machines"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machines"] });
     },
@@ -91,12 +51,7 @@ export function useDeleteMachine() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("vending_machines").delete().eq("id", id);
-
-      if (error) throw error;
-    },
+    mutationFn: createDeleteMutation("vending_machines"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machines"] });
     },

@@ -1,39 +1,26 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import type { Supplier, InsertTables, UpdateTables } from "@/types/database";
+import {
+  createFetchAllQuery,
+  createFetchOneByIdQuery,
+  createInsertMutation,
+  createUpdateMutation,
+  createDeleteMutation,
+} from "./crud-hooks-factory";
 
 export function useSuppliers() {
   return useQuery({
     queryKey: ["suppliers"],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("*")
-        .order("name");
-
-      if (error) throw error;
-      return data as Supplier[];
-    },
+    queryFn: createFetchAllQuery<Supplier>("suppliers", { orderBy: "name" }),
   });
 }
 
 export function useSupplier(id: string) {
   return useQuery({
     queryKey: ["suppliers", id],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data as Supplier;
-    },
+    queryFn: createFetchOneByIdQuery<Supplier>("suppliers", id),
     enabled: !!id,
   });
 }
@@ -42,17 +29,7 @@ export function useCreateSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (supplier: InsertTables<"suppliers">) => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("suppliers")
-        .insert(supplier)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: createInsertMutation<InsertTables<"suppliers">>("suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
@@ -63,24 +40,7 @@ export function useUpdateSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateTables<"suppliers">;
-    }) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("suppliers")
-        .update(data)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createUpdateMutation<UpdateTables<"suppliers">>("suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
@@ -91,12 +51,7 @@ export function useDeleteSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase.from("suppliers").delete().eq("id", id);
-
-      if (error) throw error;
-    },
+    mutationFn: createDeleteMutation("suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },

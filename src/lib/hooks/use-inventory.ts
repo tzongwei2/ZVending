@@ -1,8 +1,13 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import type { InsertTables, UpdateTables } from "@/types/database";
+import {
+  createFetchAllQuery,
+  createInsertMutation,
+  createUpdateMutation,
+  createDeleteMutation,
+} from "./crud-hooks-factory";
 
 // Drink-Supplier inventory (cost price and quantity)
 export type DrinkSupplierWithDetails = {
@@ -17,23 +22,20 @@ export type DrinkSupplierWithDetails = {
   supplier: { id: string; name: string };
 };
 
+const drinkSupplierSelect = `
+  *,
+  drink:drinks(id, name, image_url),
+  supplier:suppliers(id, name)
+`;
+
 export function useDrinkSuppliers() {
   return useQuery({
     queryKey: ["drink_suppliers"],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("drink_suppliers")
-        .select(`
-          *,
-          drink:drinks(id, name, image_url),
-          supplier:suppliers(id, name)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as DrinkSupplierWithDetails[];
-    },
+    queryFn: createFetchAllQuery<DrinkSupplierWithDetails>("drink_suppliers", {
+      select: drinkSupplierSelect,
+      orderBy: "created_at",
+      ascending: false,
+    }),
   });
 }
 
@@ -41,17 +43,7 @@ export function useCreateDrinkSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: InsertTables<"drink_suppliers">) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("drink_suppliers")
-        .insert(data)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createInsertMutation<InsertTables<"drink_suppliers">>("drink_suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drink_suppliers"] });
     },
@@ -62,24 +54,7 @@ export function useUpdateDrinkSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateTables<"drink_suppliers">;
-    }) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("drink_suppliers")
-        .update(data)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createUpdateMutation<UpdateTables<"drink_suppliers">>("drink_suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drink_suppliers"] });
     },
@@ -90,15 +65,7 @@ export function useDeleteDrinkSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("drink_suppliers")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    },
+    mutationFn: createDeleteMutation("drink_suppliers"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drink_suppliers"] });
     },
@@ -118,23 +85,20 @@ export type MachineDrinkPriceWithDetails = {
   drink: { id: string; name: string; image_url: string | null };
 };
 
+const machineDrinkPriceSelect = `
+  *,
+  machine:vending_machines(id, name),
+  drink:drinks(id, name, image_url)
+`;
+
 export function useMachineDrinkPrices() {
   return useQuery({
     queryKey: ["machine_drink_prices"],
-    queryFn: async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("machine_drink_prices")
-        .select(`
-          *,
-          machine:vending_machines(id, name),
-          drink:drinks(id, name, image_url)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as MachineDrinkPriceWithDetails[];
-    },
+    queryFn: createFetchAllQuery<MachineDrinkPriceWithDetails>("machine_drink_prices", {
+      select: machineDrinkPriceSelect,
+      orderBy: "created_at",
+      ascending: false,
+    }),
   });
 }
 
@@ -142,17 +106,7 @@ export function useCreateMachineDrinkPrice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: InsertTables<"machine_drink_prices">) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("machine_drink_prices")
-        .insert(data)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createInsertMutation<InsertTables<"machine_drink_prices">>("machine_drink_prices"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine_drink_prices"] });
     },
@@ -163,24 +117,7 @@ export function useUpdateMachineDrinkPrice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateTables<"machine_drink_prices">;
-    }) => {
-      const supabase = createClient();
-      const { data: result, error } = await supabase
-        .from("machine_drink_prices")
-        .update(data)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
+    mutationFn: createUpdateMutation<UpdateTables<"machine_drink_prices">>("machine_drink_prices"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine_drink_prices"] });
     },
@@ -191,15 +128,7 @@ export function useDeleteMachineDrinkPrice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("machine_drink_prices")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    },
+    mutationFn: createDeleteMutation("machine_drink_prices"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["machine_drink_prices"] });
     },
