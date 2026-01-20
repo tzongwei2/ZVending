@@ -10,7 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, TrendingUp, ShoppingCart, Package } from "lucide-react";
+import { DollarSign, TrendingUp, ShoppingCart, Package, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   BarChart,
   Bar,
@@ -58,6 +69,21 @@ export default function DashboardPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [showValues, setShowValues] = useState(false);
+  const [showRevealDialog, setShowRevealDialog] = useState(false);
+
+  const handleToggleVisibility = () => {
+    if (showValues) {
+      setShowValues(false);
+    } else {
+      setShowRevealDialog(true);
+    }
+  };
+
+  const handleConfirmReveal = () => {
+    setShowValues(true);
+    setShowRevealDialog(false);
+  };
   
   const machineFilter = selectedMachine === "all" ? undefined : selectedMachine;
   const monthOptions = getMonthOptions();
@@ -87,12 +113,20 @@ export default function DashboardPage() {
     0
   ) || 0;
 
+  const MASKED_VALUE = "••••••";
+
   const formatCurrency = (value: number) => {
+    if (!showValues) {
+      return MASKED_VALUE;
+    }
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "SGD",
     }).format(value);
   };
+
+  const formatAxisTick = (value: number) => (showValues ? `$${value}` : MASKED_VALUE);
+  const formatPercent = (value: string) => (showValues ? value : MASKED_VALUE);
 
   const chartData = monthlySales?.map((m) => ({
     month: new Date(m.month + "-01").toLocaleDateString("en-US", {
@@ -127,6 +161,15 @@ export default function DashboardPage() {
         description="Overview of your vending machine business"
       >
         <div className="flex gap-2">
+          <Button
+            variant={showValues ? "outline" : "secondary"}
+            size="icon"
+            onClick={handleToggleVisibility}
+            title={showValues ? "Hide values" : "Show values"}
+            className={!showValues ? "ring-2 ring-offset-2 ring-primary" : ""}
+          >
+            {showValues ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </Button>
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select month" />
@@ -229,7 +272,7 @@ export default function DashboardPage() {
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
                   />
@@ -304,7 +347,7 @@ export default function DashboardPage() {
                 <BarChart data={machineProfits}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="machine_name" />
-                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
                   />
@@ -334,7 +377,7 @@ export default function DashboardPage() {
                 <ComposedChart data={cashflowChartData} barGap={-40}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
                   />
@@ -404,9 +447,11 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">
               {statsLoading
                 ? "..."
-                : stats?.totalRevenue
-                ? `${(((stats.grossProfit || 0) / stats.totalRevenue) * 100).toFixed(1)}%`
-                : "0%"}
+                : formatPercent(
+                    stats?.totalRevenue
+                      ? `${(((stats.grossProfit || 0) / stats.totalRevenue) * 100).toFixed(1)}%`
+                      : "0%"
+                  )}
             </div>
             <p className="text-xs text-muted-foreground">
               Gross profit / Revenue
@@ -415,6 +460,20 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      <AlertDialog open={showRevealDialog} onOpenChange={setShowRevealDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reveal financial information?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will display all financial values on the dashboard. Are You Sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReveal}>Reveal</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
   );
 }
