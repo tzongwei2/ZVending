@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,6 +56,7 @@ import {
   type DrinkSupplierWithDetails,
   type MachineDrinkPriceWithDetails,
 } from "@/lib/hooks/use-inventory";
+import { ActionsDropdown } from "@/components/ui/actions-dropdown";
 
 export default function InventoryPage() {
   return (
@@ -519,24 +521,18 @@ function DrinkStockTab() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Stock Record</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {deleteConfirm?.drink.name} from {deleteConfirm?.supplier.name}?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteDrinkSupplier.isPending}>
-              {deleteDrinkSupplier.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Stock Record"
+        description={
+          <>
+            Are you sure you want to delete {deleteConfirm?.drink.name} from {deleteConfirm?.supplier.name}?
+          </>
+        }
+        onConfirm={handleDelete}
+        isPending={deleteDrinkSupplier.isPending}
+      />
 
       {/* Restock Dialog */}
       <Dialog open={!!restocking} onOpenChange={(open) => !open && setRestocking(null)}>
@@ -776,23 +772,23 @@ function MachinePricingTab() {
                               className="grid gap-1.5"
                               style={{ gridTemplateColumns: `repeat(${itemsPerRow}, minmax(0, 1fr))` }}
                             >
-                              {row.map((mp, colIndex) => mp && (
+                              {row.map((machineDrinkPrice, _) => machineDrinkPrice && (
                                 <div
-                                  key={mp.id}
+                                  key={machineDrinkPrice.id}
                                   className={cn(
                                     "group relative cursor-pointer transition-all hover:scale-105 hover:z-10",
-                                    !mp.is_available && "opacity-40"
+                                    !machineDrinkPrice.is_available && "opacity-40"
                                   )}
-                                  onClick={() => setEditing(mp)}
+                                  onClick={() => setEditing(machineDrinkPrice)}
                                 >
                                   {/* Drink Container */}
                                   <div className="flex flex-col items-center w-full">
                                     {/* Drink Image */}
                                     <div className="w-full h-20 flex items-end justify-center">
-                                      {mp.drink.image_url ? (
+                                      {machineDrinkPrice.drink.image_url ? (
                                         <img
-                                          src={mp.drink.image_url}
-                                          alt={mp.drink.name}
+                                          src={machineDrinkPrice.drink.image_url}
+                                          alt={machineDrinkPrice.drink.name}
                                           className="max-h-full max-w-full object-contain drop-shadow-md"
                                         />
                                       ) : (
@@ -802,12 +798,12 @@ function MachinePricingTab() {
                                     {/* Price Tag */}
                                     <div className="bg-white/90 rounded px-1.5 py-0.5 mt-1 shadow-sm">
                                       <p className="text-xs font-bold text-primary">
-                                        ${mp.selling_price.toFixed(2)}
+                                        ${machineDrinkPrice.selling_price.toFixed(2)}
                                       </p>
                                     </div>
                                   </div>
                                   {/* Unavailable Badge */}
-                                  {!mp.is_available && (
+                                  {!machineDrinkPrice.is_available && (
                                     <div className="absolute top-0 left-0">
                                       <Badge variant="destructive" className="text-[8px] px-1 py-0">
                                         Off
@@ -816,26 +812,15 @@ function MachinePricingTab() {
                                   )}
                                   {/* Hover Actions */}
                                   <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                        <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow">
-                                          <MoreHorizontal className="h-3 w-3" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditing(mp); }}>
-                                          <Pencil className="mr-2 h-4 w-4" />
-                                          Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(mp); }}
-                                          className="text-destructive"
-                                        >
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                          Remove
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    <ActionsDropdown
+                                      item={machineDrinkPrice}
+                                      onEdit={setEditing}
+                                      onDelete={setDeleteConfirm}
+                                      variant="secondary"
+                                      size="sm"
+                                      deleteLabel="Remove"
+                                      className="h-5 w-5 rounded-full shadow"
+                                    />
                                   </div>
                                 </div>
                               ))}
@@ -947,24 +932,18 @@ function MachinePricingTab() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Price</DialogTitle>
-            <DialogDescription>
-              Remove {deleteConfirm?.drink.name} from {deleteConfirm?.machine.name}?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deletePrice.isPending}>
-              {deletePrice.isPending ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete Price"
+        description={
+          <>
+            Remove {deleteConfirm?.drink.name} from {deleteConfirm?.machine.name}?
+          </>
+        }
+        onConfirm={handleDelete}
+        isPending={deletePrice.isPending}
+      />
     </div>
   );
 }
