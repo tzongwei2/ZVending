@@ -90,6 +90,9 @@ export default function DashboardPage() {
   const { data: machines } = useMachines();
   // Calculate date range for monthly sales (12 months ending at selected month)
   const getMonthlyDateRange = () => {
+    if (selectedMonth === "all") {
+      return { startDate: undefined, endDate: undefined };
+    }
     const [year, monthNum] = selectedMonth.split("-").map(Number);
     const endDate = new Date(year, monthNum, 0); // Last day of selected month
     const startDate = new Date(year, monthNum - 12, 1); // 12 months before
@@ -99,6 +102,11 @@ export default function DashboardPage() {
     };
   };
   const { startDate, endDate } = getMonthlyDateRange();
+
+  // Get display label for selected period
+  const selectedPeriodLabel = selectedMonth === "all"
+    ? "All Time"
+    : monthOptions.find((m) => m.value === selectedMonth)?.label;
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats(machineFilter, selectedMonth);
   const { data: monthlySales, isLoading: salesLoading } = useMonthlySales(machineFilter, startDate, endDate);
@@ -175,6 +183,7 @@ export default function DashboardPage() {
               <SelectValue placeholder="Select month" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
               {monthOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -209,7 +218,7 @@ export default function DashboardPage() {
               {statsLoading ? "..." : formatCurrency(stats?.totalRevenue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {monthOptions.find((m) => m.value === selectedMonth)?.label}
+              {selectedPeriodLabel}
             </p>
           </CardContent>
         </Card>
@@ -237,7 +246,7 @@ export default function DashboardPage() {
               {statsLoading ? "..." : stats?.totalDrinksSold || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {monthOptions.find((m) => m.value === selectedMonth)?.label}
+              {selectedPeriodLabel}
             </p>
           </CardContent>
         </Card>

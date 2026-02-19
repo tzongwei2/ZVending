@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
 // Starting cash balance as of Jan 2026, migrated from excel
-const STARTING_CASH = 429.62; // plus feiyang 144.1 which is not recorded cuz did not collecct feiyang sales data
+const STARTING_CASH = 434.22 ;// plus feiyang 144.1 which is not recorded cuz did not collect feiyang sales data
  
 export type MonthlySummary = {
   month: string;
@@ -81,27 +81,33 @@ export function useDashboardStats(machineId?: string, month?: string) {
     queryKey: ["dashboard_stats", machineId, month],
     queryFn: async () => {
       const supabase = createClient();
-      // Get month bounds - use provided month or current month
-      let startOfMonth: string;
-      let endOfMonth: string;
+      const isAllTime = month === "all";
 
-      if (month) {
-        // month is in YYYY-MM format
-        const [year, monthNum] = month.split("-").map(Number);
-        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
-      } else {
-        const now = new Date();
-        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      // Get month bounds - use provided month or current month (skip for "all")
+      let startOfMonth: string | undefined;
+      let endOfMonth: string | undefined;
+
+      if (!isAllTime) {
+        if (month) {
+          // month is in YYYY-MM format
+          const [year, monthNum] = month.split("-").map(Number);
+          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+        } else {
+          const now = new Date();
+          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        }
       }
 
-      // Get sales for current month
+      // Get sales (filter by date only if not "all")
       let salesQuery = supabase
         .from("sales")
-        .select("id, total_revenue, total_cost, total_profit")
-        .gte("sale_date", startOfMonth)
-        .lte("sale_date", endOfMonth);
+        .select("id, total_revenue, total_cost, total_profit");
+
+      if (!isAllTime && startOfMonth && endOfMonth) {
+        salesQuery = salesQuery.gte("sale_date", startOfMonth).lte("sale_date", endOfMonth);
+      }
 
       if (machineId) {
         salesQuery = salesQuery.eq("machine_id", machineId);
@@ -124,12 +130,14 @@ export function useDashboardStats(machineId?: string, month?: string) {
         totalDrinksSold = lineItems?.reduce((sum, item) => sum + item.quantity, 0) || 0;
       }
 
-      // Get operational costs for current month
+      // Get operational costs (filter by date only if not "all")
       let costsQuery = supabase
         .from("operational_costs")
-        .select("amount")
-        .lte("period_start", endOfMonth)
-        .gte("period_end", startOfMonth);
+        .select("amount");
+
+      if (!isAllTime && startOfMonth && endOfMonth) {
+        costsQuery = costsQuery.lte("period_start", endOfMonth).gte("period_end", startOfMonth);
+      }
 
       if (machineId) {
         costsQuery = costsQuery.or(`machine_id.eq.${machineId},machine_id.is.null`);
@@ -169,27 +177,32 @@ export function useTopDrinks(machineId?: string, limit: number = 5, month?: stri
     queryKey: ["top_drinks", machineId, limit, month],
     queryFn: async () => {
       const supabase = createClient();
+      const isAllTime = month === "all";
 
-      // Get month bounds
-      let startOfMonth: string;
-      let endOfMonth: string;
+      // Get month bounds (skip for "all")
+      let startOfMonth: string | undefined;
+      let endOfMonth: string | undefined;
 
-      if (month) {
-        const [year, monthNum] = month.split("-").map(Number);
-        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
-      } else {
-        const now = new Date();
-        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      if (!isAllTime) {
+        if (month) {
+          const [year, monthNum] = month.split("-").map(Number);
+          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+        } else {
+          const now = new Date();
+          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        }
       }
 
       // Get sales filtered by machine and/or month
       let salesQuery = supabase
         .from("sales")
-        .select("id")
-        .gte("sale_date", startOfMonth)
-        .lte("sale_date", endOfMonth);
+        .select("id");
+
+      if (!isAllTime && startOfMonth && endOfMonth) {
+        salesQuery = salesQuery.gte("sale_date", startOfMonth).lte("sale_date", endOfMonth);
+      }
 
       if (machineId) {
         salesQuery = salesQuery.eq("machine_id", machineId);
@@ -243,19 +256,22 @@ export function useMachineProfitComparison(month?: string) {
     queryKey: ["machine_profit_comparison", month],
     queryFn: async () => {
       const supabase = createClient();
+      const isAllTime = month === "all";
 
-      // Get month bounds
-      let startOfMonth: string;
-      let endOfMonth: string;
+      // Get month bounds (skip for "all")
+      let startOfMonth: string | undefined;
+      let endOfMonth: string | undefined;
 
-      if (month) {
-        const [year, monthNum] = month.split("-").map(Number);
-        startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-        endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
-      } else {
-        const now = new Date();
-        startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      if (!isAllTime) {
+        if (month) {
+          const [year, monthNum] = month.split("-").map(Number);
+          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
+          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+        } else {
+          const now = new Date();
+          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        }
       }
 
       // Get all machines
@@ -265,13 +281,16 @@ export function useMachineProfitComparison(month?: string) {
 
       if (machinesError) throw machinesError;
 
-      // Get sales for the month
-      const { data: sales, error: salesError } = await supabase
+      // Get sales (filter by date only if not "all")
+      let salesQuery = supabase
         .from("sales")
-        .select("machine_id, total_revenue, total_profit")
-        .gte("sale_date", startOfMonth)
-        .lte("sale_date", endOfMonth);
+        .select("machine_id, total_revenue, total_profit");
 
+      if (!isAllTime && startOfMonth && endOfMonth) {
+        salesQuery = salesQuery.gte("sale_date", startOfMonth).lte("sale_date", endOfMonth);
+      }
+
+      const { data: sales, error: salesError } = await salesQuery;
       if (salesError) throw salesError;
 
       // Aggregate by machine
