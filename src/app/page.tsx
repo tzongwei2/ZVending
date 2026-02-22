@@ -293,8 +293,16 @@ export default function DashboardPage() {
                     formatter={(value) => formatCurrency(Number(value))}
                   />
                   <Legend />
-                  <Bar dataKey="Revenue" fill="#054b17be" />
-                  <Bar dataKey="Profit" fill="#29be35bd" />
+                  <Bar dataKey="Revenue" fill="#054b17be">
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-revenue-${index}`} fill={entry.Revenue < 0 ? "#dc2626" : "#054b17be"} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="Profit" fill="#29be35bd">
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-profit-${index}`} fill={entry.Profit < 0 ? "#dc2626" : "#29be35bd"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -368,8 +376,16 @@ export default function DashboardPage() {
                     formatter={(value) => formatCurrency(Number(value))}
                   />
                   <Legend />
-                  <Bar dataKey="revenue" name="Revenue" fill="#054b17be" />
-                  <Bar dataKey="profit" name="Profit" fill="#29be35bd" />
+                  <Bar dataKey="revenue" name="Revenue" fill="#054b17be">
+                    {machineProfits.map((entry, index) => (
+                      <Cell key={`cell-revenue-${index}`} fill={entry.revenue < 0 ? "#dc2626" : "#054b17be"} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="profit" name="Profit" fill="#29be35bd">
+                    {machineProfits.map((entry, index) => (
+                      <Cell key={`cell-profit-${index}`} fill={entry.profit < 0 ? "#dc2626" : "#29be35bd"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
