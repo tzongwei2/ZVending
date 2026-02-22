@@ -148,7 +148,7 @@ export default function DashboardPage() {
         timeZone: "UTC",
       }),
       Revenue: m.revenue,
-      Profit: m.gross_profit,
+      Profit: m.net_profit,
     };
   });
 

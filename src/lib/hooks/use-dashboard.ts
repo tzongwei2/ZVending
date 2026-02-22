@@ -11,6 +11,7 @@ export type MonthlySummary = {
   revenue: number;
   cost: number;
   gross_profit: number;
+  net_profit: number;
 };
 
 export type DashboardStats = {
@@ -53,7 +54,26 @@ export function useMonthlySales(machineId?: string, startDate?: string, endDate?
       const { data, error } = await query;
       if (error) throw error;
 
-      // Group by month
+      // Get operational costs for the same date range
+      let costsQuery = supabase
+        .from("operational_costs")
+        .select("period_start, amount, machine_id");
+
+      if (startDate && endDate) {
+        costsQuery = costsQuery.lte("period_start", endDate).gte("period_end", startDate);
+      }
+
+      const { data: costs, error: costsError } = await costsQuery;
+      if (costsError) throw costsError;
+
+      // Get total number of machines to split general costs
+      const { data: machines, error: machinesError } = await supabase
+        .from("vending_machines")
+        .select("id");
+      if (machinesError) throw machinesError;
+      const numMachines = machines?.length || 1;
+
+      // Group sales by month
       const monthlyData: Record<string, MonthlySummary> = {};
 
       data?.forEach((sale) => {
@@ -64,11 +84,61 @@ export function useMonthlySales(machineId?: string, startDate?: string, endDate?
             revenue: 0,
             cost: 0,
             gross_profit: 0,
+            net_profit: 0,
           };
         }
         monthlyData[monthKey].revenue += sale.total_revenue;
         monthlyData[monthKey].cost += sale.total_cost;
         monthlyData[monthKey].gross_profit += sale.total_profit;
+        monthlyData[monthKey].net_profit += sale.total_profit;
+      });
+
+      // Group operational costs by month and deduct from net profit
+      costs?.forEach((cost) => {
+        const monthKey = cost.period_start.substring(0, 7);
+
+        // If filtering by specific machine
+        if (machineId) {
+          // Include machine-specific costs
+          if (cost.machine_id === machineId) {
+            if (!monthlyData[monthKey]) {
+              monthlyData[monthKey] = {
+                month: monthKey,
+                revenue: 0,
+                cost: 0,
+                gross_profit: 0,
+                net_profit: 0,
+              };
+            }
+            monthlyData[monthKey].net_profit -= cost.amount;
+          }
+          // Include proportional share of general costs
+          else if (cost.machine_id === null) {
+            if (!monthlyData[monthKey]) {
+              monthlyData[monthKey] = {
+                month: monthKey,
+                revenue: 0,
+                cost: 0,
+                gross_profit: 0,
+                net_profit: 0,
+              };
+            }
+            monthlyData[monthKey].net_profit -= (cost.amount / numMachines);
+          }
+        }
+        // If showing all machines, include all costs
+        else {
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = {
+              month: monthKey,
+              revenue: 0,
+              cost: 0,
+              gross_profit: 0,
+              net_profit: 0,
+            };
+          }
+          monthlyData[monthKey].net_profit -= cost.amount;
+        }
       });
 
       return Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
@@ -293,6 +363,34 @@ export function useMachineProfitComparison(month?: string) {
       const { data: sales, error: salesError } = await salesQuery;
       if (salesError) throw salesError;
 
+      // Get operational costs (filter by date only if not "all")
+      let costsQuery = supabase
+        .from("operational_costs")
+        .select("amount, machine_id");
+
+      if (!isAllTime && startOfMonth && endOfMonth) {
+        costsQuery = costsQuery.lte("period_start", endOfMonth).gte("period_end", startOfMonth);
+      }
+
+      const { data: costs, error: costsError } = await costsQuery;
+      if (costsError) throw costsError;
+
+      // Separate machine-specific costs from general costs
+      let generalCosts = 0;
+      const machineSpecificCosts: Record<string, number> = {};
+
+      costs?.forEach((cost) => {
+        if (cost.machine_id === null) {
+          generalCosts += cost.amount;
+        } else {
+          machineSpecificCosts[cost.machine_id] = (machineSpecificCosts[cost.machine_id] || 0) + cost.amount;
+        }
+      });
+
+      // Split general costs evenly across all machines
+      const numMachines = machines?.length || 1;
+      const costPerMachine = generalCosts / numMachines;
+
       // Aggregate by machine
       const machineData: Record<string, MachineProfitData> = {};
 
@@ -306,11 +404,21 @@ export function useMachineProfitComparison(month?: string) {
         };
       });
 
-      // Add sales data
+      // Add sales data (gross profit)
       sales?.forEach((sale) => {
         if (machineData[sale.machine_id]) {
           machineData[sale.machine_id].revenue += sale.total_revenue;
           machineData[sale.machine_id].profit += sale.total_profit;
+        }
+      });
+
+      // Deduct operational costs from profit
+      machines?.forEach((machine) => {
+        if (machineData[machine.id]) {
+          // Deduct machine-specific costs
+          const specificCost = machineSpecificCosts[machine.id] || 0;
+          // Deduct share of general costs
+          machineData[machine.id].profit -= (specificCost + costPerMachine);
         }
       });
 
