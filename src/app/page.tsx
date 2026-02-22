@@ -88,17 +88,18 @@ export default function DashboardPage() {
   const machineFilter = selectedMachine === "all" ? undefined : selectedMachine;
   const monthOptions = getMonthOptions();
   const { data: machines } = useMachines();
-  // Calculate date range for monthly sales (12 months ending at selected month)
+  // Calculate date range for monthly sales
   const getMonthlyDateRange = () => {
     if (selectedMonth === "all") {
       return { startDate: undefined, endDate: undefined };
     }
     const [year, monthNum] = selectedMonth.split("-").map(Number);
-    const endDate = new Date(year, monthNum, 0); // Last day of selected month
-    const startDate = new Date(year, monthNum - 12, 1); // 12 months before
+    // Use Date.UTC to avoid timezone shifts, include full day by setting time to 23:59:59
+    const startDate = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59));
     return {
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
     };
   };
   const { startDate, endDate } = getMonthlyDateRange();
@@ -136,14 +137,20 @@ export default function DashboardPage() {
   const formatAxisTick = (value: number) => (showValues ? `$${value}` : MASKED_VALUE);
   const formatPercent = (value: string) => (showValues ? value : MASKED_VALUE);
 
-  const chartData = monthlySales?.map((m) => ({
-    month: new Date(m.month + "-01").toLocaleDateString("en-US", {
-      month: "short",
-      year: "2-digit",
-    }),
-    Revenue: m.revenue,
-    Profit: m.gross_profit,
-  }));
+  const chartData = monthlySales?.map((m) => {
+    // Parse month string (YYYY-MM) and create UTC date to avoid timezone shifts
+    const [year, month] = m.month.split("-");
+    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1));
+    return {
+      month: date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+        timeZone: "UTC",
+      }),
+      Revenue: m.revenue,
+      Profit: m.gross_profit,
+    };
+  });
 
   const pieData = topDrinks?.map((d) => ({
     name: d.drink_name,

@@ -91,12 +91,12 @@ export function useDashboardStats(machineId?: string, month?: string) {
         if (month) {
           // month is in YYYY-MM format
           const [year, monthNum] = month.split("-").map(Number);
-          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(year, monthNum - 1, 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59)).toISOString();
         } else {
           const now = new Date();
-          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)).toISOString();
         }
       }
 
@@ -186,12 +186,12 @@ export function useTopDrinks(machineId?: string, limit: number = 5, month?: stri
       if (!isAllTime) {
         if (month) {
           const [year, monthNum] = month.split("-").map(Number);
-          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(year, monthNum - 1, 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59)).toISOString();
         } else {
           const now = new Date();
-          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)).toISOString();
         }
       }
 
@@ -265,12 +265,12 @@ export function useMachineProfitComparison(month?: string) {
       if (!isAllTime) {
         if (month) {
           const [year, monthNum] = month.split("-").map(Number);
-          startOfMonth = new Date(year, monthNum - 1, 1).toISOString();
-          endOfMonth = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(year, monthNum - 1, 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59)).toISOString();
         } else {
           const now = new Date();
-          startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+          startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
+          endOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)).toISOString();
         }
       }
 
