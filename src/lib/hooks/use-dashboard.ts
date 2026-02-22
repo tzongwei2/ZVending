@@ -203,24 +203,43 @@ export function useDashboardStats(machineId?: string, month?: string) {
       // Get operational costs (filter by date only if not "all")
       let costsQuery = supabase
         .from("operational_costs")
-        .select("amount");
+        .select("amount, machine_id");
 
       if (!isAllTime && startOfMonth && endOfMonth) {
         costsQuery = costsQuery.lte("period_start", endOfMonth).gte("period_end", startOfMonth);
       }
 
-      if (machineId) {
-        costsQuery = costsQuery.or(`machine_id.eq.${machineId},machine_id.is.null`);
-      }
-
       const { data: costsData, error: costsError } = await costsQuery;
       if (costsError) throw costsError;
+
+      // Get total number of machines to split general costs
+      const { data: machines, error: machinesError } = await supabase
+        .from("vending_machines")
+        .select("id");
+      if (machinesError) throw machinesError;
+      const numMachines = machines?.length || 1;
 
       // Calculate totals
       const totalRevenue = salesData?.reduce((sum, s) => sum + s.total_revenue, 0) || 0;
       const totalCost = salesData?.reduce((sum, s) => sum + s.total_cost, 0) || 0;
       const grossProfit = salesData?.reduce((sum, s) => sum + s.total_profit, 0) || 0;
-      const operationalCosts = costsData?.reduce((sum, c) => sum + c.amount, 0) || 0;
+
+      // Calculate operational costs
+      let operationalCosts = 0;
+      if (machineId) {
+        // For specific machine: include machine-specific costs + proportional share of general costs
+        costsData?.forEach((cost) => {
+          if (cost.machine_id === machineId) {
+            operationalCosts += cost.amount;
+          } else if (cost.machine_id === null) {
+            operationalCosts += (cost.amount / numMachines);
+          }
+        });
+      } else {
+        // For all machines: include all costs once
+        operationalCosts = costsData?.reduce((sum, c) => sum + c.amount, 0) || 0;
+      }
+
       const netProfit = grossProfit - operationalCosts;
 
       return {
