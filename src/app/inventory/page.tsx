@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater, ChevronRight, ChevronDown, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -100,6 +101,8 @@ function DrinkStockTab() {
   const [sortField, setSortField] = useState<SortField>("drink");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [expandedDrinks, setExpandedDrinks] = useState<Set<string>>(new Set());
+  const [hasGST, setHasGST] = useState(false);
+  const [costPrice, setCostPrice] = useState("");
 
   const { data: drinkSuppliers, isLoading } = useDrinkSuppliers();
   const { data: drinks } = useDrinks();
@@ -185,16 +188,24 @@ function DrinkStockTab() {
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const cartonQuantity = parseInt(formData.get("quantity") as string);
+    const cartonCostPrice = parseFloat(formData.get("cost_price") as string);
+
+    // Apply GST if enabled (9%)
+    const finalCartonCostPrice = hasGST ? cartonCostPrice * 1.09 : cartonCostPrice;
 
     try {
       await createDrinkSupplier.mutateAsync({
         drink_id: formData.get("drink_id") as string,
         supplier_id: formData.get("supplier_id") as string,
-        cost_price: parseFloat(formData.get("cost_price") as string),
-        quantity: parseInt(formData.get("quantity") as string),
+        cost_price: finalCartonCostPrice / 24,  // Convert to per-unit price
+        quantity: cartonQuantity * 24,      // Convert to units
       });
       toast.success("Inventory record created");
       setIsCreateOpen(false);
+      // Reset form state
+      setCostPrice("");
+      setHasGST(false);
     } catch {
       toast.error("Failed to create. This drink-supplier combination may already exist.");
     }
@@ -234,16 +245,17 @@ function DrinkStockTab() {
     e.preventDefault();
     if (!restocking) return;
     const formData = new FormData(e.currentTarget);
-    const addQuantity = parseInt(formData.get("quantity") as string);
+    const cartonQuantity = parseInt(formData.get("quantity") as string);
+    const unitsToAdd = cartonQuantity * 24;  // Convert cartons to units
 
     try {
       await updateDrinkSupplier.mutateAsync({
         id: restocking.id,
         data: {
-          quantity: restocking.quantity + addQuantity,
+          quantity: restocking.quantity + unitsToAdd,
         },
       });
-      toast.success(`Added ${addQuantity} units to stock`);
+      toast.success(`Added ${unitsToAdd} units (${cartonQuantity} carton${cartonQuantity !== 1 ? 's' : ''}) to stock`);
       setRestocking(null);
     } catch {
       toast.error("Failed to restock");
@@ -268,7 +280,14 @@ function DrinkStockTab() {
             className="pl-9"
           />
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) {
+            // Reset form state when dialog closes
+            setCostPrice("");
+            setHasGST(false);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -315,25 +334,54 @@ function DrinkStockTab() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="cost_price">Cost Price</Label>
+                  <Label htmlFor="cost_price">Cost Price (Per Carton)</Label>
                   <Input
                     id="cost_price"
                     name="cost_price"
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="0.00"
+                    placeholder="48.00"
+                    value={costPrice}
+                    onChange={(e) => setCostPrice(e.target.value)}
                     required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="has_gst">Include GST (9%)</Label>
+                    <Switch
+                      id="has_gst"
+                      checked={hasGST}
+                      onCheckedChange={setHasGST}
+                    />
+                  </div>
+                  {hasGST && costPrice && parseFloat(costPrice) > 0 && (
+                    <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Original Cost:</span>
+                        <span className="font-medium">${parseFloat(costPrice).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">GST (9%):</span>
+                        <span className="font-medium">+${(parseFloat(costPrice) * 0.09).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-1 mt-1">
+                        <span className="font-semibold">Total Cost:</span>
+                        <span className="font-semibold">${(parseFloat(costPrice) * 1.09).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="quantity">Quantity (Cartons)</Label>
                   <Input
                     id="quantity"
                     name="quantity"
                     type="number"
+                    step="1"
                     min="0"
-                    defaultValue="0"
+                    placeholder="1"
                     required
                   />
                 </div>
@@ -546,13 +594,14 @@ function DrinkStockTab() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="restock-quantity">Quantity to Add</Label>
+                <Label htmlFor="restock-quantity">Add Quantity (Cartons)</Label>
                 <Input
                   id="restock-quantity"
                   name="quantity"
                   type="number"
+                  step="1"
                   min="1"
-                  placeholder="Enter quantity"
+                  placeholder="1"
                   autoFocus
                   required
                 />
