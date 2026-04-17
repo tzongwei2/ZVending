@@ -64,7 +64,7 @@ export function useCreateDrinkSupplier() {
         // Same price exists - update quantity
         const { data: updated, error: updateError } = await supabase
           .from("drink_suppliers")
-          .update({ quantity: existing.quantity + data.quantity })
+          .update({ quantity: existing.quantity + (data.quantity ?? 0) })
           .eq("id", existing.id)
           .select()
           .single();
