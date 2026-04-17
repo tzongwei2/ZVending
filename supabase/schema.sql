@@ -48,6 +48,7 @@ CREATE TABLE vending_machines (
 -- ============================================
 
 -- Drink suppliers (many-to-many with cost price and quantity)
+-- Supports price history: multiple records per drink-supplier with different prices
 CREATE TABLE drink_suppliers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     drink_id UUID NOT NULL REFERENCES drinks(id) ON DELETE CASCADE,
@@ -56,7 +57,6 @@ CREATE TABLE drink_suppliers (
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(drink_id, supplier_id)
 );
 
 -- Machine drink prices (selling price per drink per machine)
@@ -225,12 +225,12 @@ BEGIN
             RAISE EXCEPTION 'Drink % is not available at machine %', v_drink_id, p_machine_id;
         END IF;
 
-        -- Get suppliers ordered by quantity ASC (lowest first)
+        -- Get suppliers ordered by created_at ASC (oldest batches first for FIFO)
         FOR v_supplier IN
             SELECT id, supplier_id, cost_price, quantity
             FROM drink_suppliers
             WHERE drink_id = v_drink_id AND quantity > 0
-            ORDER BY quantity ASC
+            ORDER BY created_at ASC
             FOR UPDATE  -- Lock rows for update
         LOOP
             IF v_remaining_qty <= 0 THEN
