@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { InsertTables, UpdateTables } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
 import {
   createFetchAllQuery,
   createInsertMutation,
@@ -43,7 +44,45 @@ export function useCreateDrinkSupplier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: createInsertMutation<InsertTables<"drink_suppliers">>("drink_suppliers"),
+    mutationFn: async (data: InsertTables<"drink_suppliers">) => {
+      const supabase = createClient();
+
+      // Check if drink-supplier combo exists with same cost_price
+      const { data: existing, error: fetchError } = await supabase
+        .from("drink_suppliers")
+        .select("id, quantity, cost_price")
+        .eq("drink_id", data.drink_id)
+        .eq("supplier_id", data.supplier_id)
+        .eq("cost_price", data.cost_price)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (existing) {
+        // Same price exists - update quantity
+        const { data: updated, error: updateError } = await supabase
+          .from("drink_suppliers")
+          .update({ quantity: existing.quantity + data.quantity })
+          .eq("id", existing.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        return updated;
+      } else {
+        // Different price or doesn't exist - create new record
+        const { data: inserted, error: insertError } = await supabase
+          .from("drink_suppliers")
+          .insert(data)
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        return inserted;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drink_suppliers"] });
     },
