@@ -39,7 +39,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater, ChevronRight, ChevronDown, PackagePlus } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, GlassWater, ChevronRight, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDrinks } from "@/lib/hooks/use-drinks";
@@ -96,7 +96,6 @@ function DrinkStockTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DrinkSupplierWithDetails | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DrinkSupplierWithDetails | null>(null);
-  const [restocking, setRestocking] = useState<DrinkSupplierWithDetails | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("drink");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -201,13 +200,13 @@ function DrinkStockTab() {
         cost_price: finalCartonCostPrice / 24,  // Convert to per-unit price
         quantity: cartonQuantity * 24,      // Convert to units
       });
-      toast.success("Inventory record created");
+      toast.success("Stock added successfully");
       setIsCreateOpen(false);
       // Reset form state
       setCostPrice("");
       setHasGST(false);
     } catch {
-      toast.error("Failed to create. This drink-supplier combination may already exist.");
+      toast.error("Failed to add stock. Please check your inputs.");
     }
   };
 
@@ -241,26 +240,6 @@ function DrinkStockTab() {
     }
   };
 
-  const handleRestock = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!restocking) return;
-    const formData = new FormData(e.currentTarget);
-    const cartonQuantity = parseInt(formData.get("quantity") as string);
-    const unitsToAdd = cartonQuantity * 24;  // Convert cartons to units
-
-    try {
-      await updateDrinkSupplier.mutateAsync({
-        id: restocking.id,
-        data: {
-          quantity: restocking.quantity + unitsToAdd,
-        },
-      });
-      toast.success(`Added ${unitsToAdd} units (${cartonQuantity} carton${cartonQuantity !== 1 ? 's' : ''}) to stock`);
-      setRestocking(null);
-    } catch {
-      toast.error("Failed to restock");
-    }
-  };
 
   const getStockBadge = (quantity: number) => {
     if (quantity === 0) return <Badge variant="destructive">Out of Stock</Badge>;
@@ -299,7 +278,8 @@ function DrinkStockTab() {
               <DialogHeader>
                 <DialogTitle>Add Drink Stock</DialogTitle>
                 <DialogDescription>
-                  Link a drink to a supplier with cost price and quantity.
+                  Add stock for a drink from a supplier. If the price matches an existing record,
+                  quantity will be added. If the price differs, a new batch will be created.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -502,10 +482,6 @@ function DrinkStockTab() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRestocking(ds); }}>
-                                <PackagePlus className="mr-2 h-4 w-4" />
-                                Restock
-                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditing(ds); }}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
@@ -581,46 +557,6 @@ function DrinkStockTab() {
         onConfirm={handleDelete}
         isPending={deleteDrinkSupplier.isPending}
       />
-
-      {/* Restock Dialog */}
-      <Dialog open={!!restocking} onOpenChange={(open) => !open && setRestocking(null)}>
-        <DialogContent>
-          <form onSubmit={handleRestock}>
-            <DialogHeader>
-              <DialogTitle>Restock from Supplier</DialogTitle>
-              <DialogDescription>
-                Add more {restocking?.drink.name} from {restocking?.supplier.name} (@ ${restocking?.cost_price.toFixed(2)} each)
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="restock-quantity">Add Quantity (Cartons)</Label>
-                <Input
-                  id="restock-quantity"
-                  name="quantity"
-                  type="number"
-                  step="1"
-                  min="1"
-                  placeholder="1"
-                  autoFocus
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Current stock: {restocking?.quantity} units
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setRestocking(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={updateDrinkSupplier.isPending}>
-                {updateDrinkSupplier.isPending ? "Adding..." : "Add Stock"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
