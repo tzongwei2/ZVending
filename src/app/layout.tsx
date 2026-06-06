@@ -34,7 +34,7 @@ export default function RootLayout({
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <main className="flex-1 md:pl-64">
+            <main className="min-w-0 flex-1 md:pl-64">
               <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b bg-background px-4 md:hidden">
                 <MobileSidebar />
                 <Link href="/" className="flex items-center">

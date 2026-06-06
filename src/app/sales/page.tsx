@@ -182,7 +182,7 @@ export default function SalesPage() {
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[45vh] sm:max-h-[55vh] overflow-y-auto p-1">
                       {availableDrinks?.length === 0 ? (
                         <p className="text-sm text-muted-foreground col-span-2 sm:col-span-3 md:col-span-4">
                           No drinks configured for this machine.
