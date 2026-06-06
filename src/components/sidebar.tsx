@@ -1,9 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   Package,
@@ -14,6 +22,7 @@ import {
   Receipt,
   Wallet,
   TrendingUp,
+  Menu,
 } from "lucide-react";
 
 const navigation = [
@@ -28,47 +37,81 @@ const navigation = [
   { name: "Expenditures", href: "/expenditures", icon: Wallet },
 ];
 
-export function Sidebar() {
+function SidebarBrand() {
+  return (
+    <div className="flex h-16 items-center border-b px-4">
+      <Link href="/" className="flex items-center">
+        <Image
+          src="/logo.png"
+          alt="Z Vending"
+          width={180}
+          height={48}
+          className="h-12 w-auto"
+          priority
+        />
+      </Link>
+    </div>
+  );
+}
+
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-background">
-      <div className="flex h-full flex-col">
-        <div className="flex h-16 items-center border-b px-4">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Z Vending"
-              width={180}
-              height={48}
-              className="h-12 w-auto"
-              priority
-            />
+    <nav className="flex-1 space-y-1 px-3 py-4">
+      {navigation.map((item) => {
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/" && pathname.startsWith(item.href));
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.name}
           </Link>
-        </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r bg-background md:block">
+      <div className="flex h-full flex-col">
+        <SidebarBrand />
+        <SidebarNav />
       </div>
     </aside>
+  );
+}
+
+export function MobileSidebar() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Open menu">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-64 p-0 sm:max-w-none">
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <div className="flex h-full flex-col">
+          <SidebarBrand />
+          <SidebarNav onNavigate={() => setOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

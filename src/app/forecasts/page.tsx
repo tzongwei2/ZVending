@@ -58,7 +58,7 @@ export default function ForecastsPage() {
         title="Forecasts"
         description="Predict demand and plan your restocking"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Switch
               id="include-current"
@@ -73,7 +73,7 @@ export default function ForecastsPage() {
             value={forecastMonths.toString()}
             onValueChange={(value) => setForecastMonths(parseInt(value))}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[160px] sm:w-[180px]">
               <SelectValue placeholder="Select months" />
             </SelectTrigger>
             <SelectContent>

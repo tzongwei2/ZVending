@@ -174,17 +174,17 @@ export default function SalesPage() {
                 <>
                   <Separator />
                   <div className="grid gap-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <Label>Select Drinks</Label>
                       {cart.length > 0 && (
-                        <span className="text-lg font-bold">
+                        <span className="text-base font-bold sm:text-lg">
                           {cart.reduce((sum, item) => sum + item.quantity, 0)} drinks · ${cartTotal.toFixed(2)}
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[45vh] sm:max-h-[55vh] overflow-y-auto p-1">
                       {availableDrinks?.length === 0 ? (
-                        <p className="text-sm text-muted-foreground col-span-4">
+                        <p className="text-sm text-muted-foreground col-span-2 sm:col-span-3 md:col-span-4">
                           No drinks configured for this machine.
                         </p>
                       ) : (
@@ -226,7 +226,7 @@ export default function SalesPage() {
                                     type="button"
                                     size="icon"
                                     variant="outline"
-                                    className="h-6 w-6"
+                                    className="h-8 w-8 sm:h-6 sm:w-6"
                                     onClick={() => handleUpdateQuantity(drink.drink_id, quantity - 1)}
                                   >
                                     <span className="text-sm">-</span>
@@ -249,20 +249,20 @@ export default function SalesPage() {
                                         e.currentTarget.blur();
                                       }
                                     }}
-                                    className="w-10 h-6 text-center text-sm font-medium border rounded bg-background"
+                                    className="w-12 h-8 sm:w-10 sm:h-6 text-center text-sm font-medium border rounded bg-background"
                                   />
                                   <Button
                                     type="button"
                                     size="icon"
                                     variant="outline"
-                                    className="h-6 w-6"
+                                    className="h-8 w-8 sm:h-6 sm:w-6"
                                     onClick={() => handleAddToCart(drink.drink_id)}
                                   >
                                     <span className="text-sm">+</span>
                                   </Button>
                                 </div>
                               ) : (
-                                <div className="h-7 mt-1 flex items-center">
+                                <div className="h-8 sm:h-7 mt-1 flex items-center">
                                   {drink.total_stock <= 5 && drink.total_stock > 0 && (
                                     <span className="text-[10px] text-orange-500">
                                       Low: {drink.total_stock}

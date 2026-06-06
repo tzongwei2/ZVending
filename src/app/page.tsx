@@ -175,7 +175,7 @@ export default function DashboardPage() {
         title="Dashboard"
         description="Overview of your vending machine business"
       >
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={showValues ? "outline" : "secondary"}
             size="icon"
@@ -186,7 +186,7 @@ export default function DashboardPage() {
             {showValues ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
           </Button>
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="min-w-0 flex-1 sm:w-[180px] sm:flex-none">
               <SelectValue placeholder="Select month" />
             </SelectTrigger>
             <SelectContent>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
           <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="min-w-0 flex-1 sm:w-[180px] sm:flex-none">
               <SelectValue placeholder="Filter by machine" />
             </SelectTrigger>
             <SelectContent>
@@ -214,14 +214,14 @@ export default function DashboardPage() {
         </div>
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="truncate text-xl font-bold sm:text-2xl">
               {statsLoading ? "..." : formatCurrency(stats?.totalRevenue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -235,7 +235,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(stats?.netProfit || 0) < 0 ? "text-red-600" : "text-green-600"}`}>
+            <div className={`truncate text-xl font-bold sm:text-2xl ${(stats?.netProfit || 0) < 0 ? "text-red-600" : "text-green-600"}`}>
               {statsLoading ? "..." : formatCurrency(stats?.netProfit || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="truncate text-xl font-bold sm:text-2xl">
               {statsLoading ? "..." : stats?.totalDrinksSold || 0}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -263,7 +263,7 @@ export default function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="truncate text-xl font-bold sm:text-2xl">
               {inventoryLoading ? "..." : formatCurrency(inventoryValue)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -274,7 +274,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Monthly Revenue & Profit</CardTitle>
           </CardHeader>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
@@ -312,7 +312,7 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Top Selling Drinks</CardTitle>
           </CardHeader>
@@ -329,10 +329,10 @@ export default function DashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} (${((percent || 0) * 100).toFixed(0)}%)`
+                    label={({ percent }) =>
+                      `${((percent || 0) * 100).toFixed(0)}%`
                     }
-                    outerRadius={100}
+                    outerRadius="70%"
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -344,6 +344,12 @@ export default function DashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -357,7 +363,7 @@ export default function DashboardPage() {
 
       {/* Machine Profit Comparison & Cashflow */}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Machine Profit Comparison</CardTitle>
           </CardHeader>
@@ -370,7 +376,7 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={machineProfits}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="machine_name" />
+                  <XAxis dataKey="machine_name" tick={{ fontSize: 11 }} interval={0} />
                   <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
@@ -395,7 +401,7 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader>
             <CardTitle>Monthly Cashflow</CardTitle>
           </CardHeader>
@@ -406,17 +412,17 @@ export default function DashboardPage() {
               </div>
             ) : cashflowChartData && cashflowChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={cashflowChartData} barGap={-40}>
+                <ComposedChart data={cashflowChartData} barGap={-18}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={formatAxisTick} />
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value))}
                   />
                   <Legend />
                   <ReferenceLine y={0} stroke="#666" />
-                  <Bar dataKey="Income" fill="#2dd4bf" barSize={40} />
-                  <Bar dataKey="Expenses" fill="#f472b6" barSize={40} />
+                  <Bar dataKey="Income" fill="#2dd4bf" barSize={18} />
+                  <Bar dataKey="Expenses" fill="#f472b6" barSize={18} />
                   <Line
                     type="monotone"
                     dataKey="Net Cashflow"
