@@ -412,7 +412,7 @@ export default function DashboardPage() {
               </div>
             ) : cashflowChartData && cashflowChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={cashflowChartData} barGap={-40}>
+                <ComposedChart data={cashflowChartData} barGap={-18}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={formatAxisTick} />
@@ -421,8 +421,8 @@ export default function DashboardPage() {
                   />
                   <Legend />
                   <ReferenceLine y={0} stroke="#666" />
-                  <Bar dataKey="Income" fill="#2dd4bf" barSize={40} />
-                  <Bar dataKey="Expenses" fill="#f472b6" barSize={40} />
+                  <Bar dataKey="Income" fill="#2dd4bf" barSize={18} />
+                  <Bar dataKey="Expenses" fill="#f472b6" barSize={18} />
                   <Line
                     type="monotone"
                     dataKey="Net Cashflow"
