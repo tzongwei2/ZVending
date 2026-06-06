@@ -21,7 +21,6 @@ import {
   ShoppingCart,
   Receipt,
   Wallet,
-  TrendingUp,
   Menu,
 } from "lucide-react";
 
@@ -32,7 +31,6 @@ const navigation = [
   { name: "Machines", href: "/machines", icon: Building2 },
   { name: "Inventory", href: "/inventory", icon: PackageSearch },
   { name: "Sales", href: "/sales", icon: ShoppingCart },
-  { name: "Forecasts", href: "/forecasts", icon: TrendingUp },
   { name: "Costs", href: "/costs", icon: Receipt },
   { name: "Expenditures", href: "/expenditures", icon: Wallet },
 ];
