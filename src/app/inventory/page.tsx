@@ -249,8 +249,8 @@ function DrinkStockTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by drink or supplier..."
@@ -631,11 +631,11 @@ function MachinePricingTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-2 min-w-0">
           <Label className="whitespace-nowrap">Select Machine:</Label>
           <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="flex-1 sm:w-[250px] sm:flex-none">
               <SelectValue placeholder="Choose a machine to manage pricing" />
             </SelectTrigger>
             <SelectContent>
@@ -715,7 +715,7 @@ function MachinePricingTab() {
       ) : (
         /* Vending Machine Planogram - styled like reference image */
         <div className="flex justify-center">
-          <div className="relative w-[420px]">
+          <div className="relative w-full max-w-[420px]">
             {/* Machine Frame */}
             <div className="bg-white rounded-t-3xl rounded-b-xl shadow-2xl overflow-hidden border-2 border-slate-300">
               {/* Top Frame */}
